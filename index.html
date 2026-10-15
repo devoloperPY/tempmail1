@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+  <title>Sigit TempMail — Beranda Generator Email Sementara</title>
+  <meta name="description" content="Layanan email sementara cepat dan aman khusus pengguna terverifikasi." />
+  <link rel="icon" href="favicon.ico" />
+
+  <!-- PROTEKSI INSTAN: Langsung lempar ke login.html sebelum halaman dirender jika belum login -->
+  <script>
+    (function () {
+      const token = localStorage.getItem('session_token');
+      if (!token) {
+        window.location.replace('login.html');
+      }
+    })();
+  </script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="flex flex-col min-h-screen">
+  <!-- Decorative Mesh Background -->
+  <div class="bg-mesh">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+  </div>
+
+  <!-- Navbar (Khusus User yang Sudah Login) -->
+  <header class="glass-nav sticky top-0 z-40">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
+      <a href="index.html" class="flex items-center gap-2.5 shrink-0">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl btn-primary flex items-center justify-center text-white shadow-sm">
+          <i data-lucide="mail-check" class="w-5 h-5"></i>
+        </div>
+        <div class="leading-none">
+          <span class="font-extrabold text-base sm:text-lg tracking-tight text-slate-900">Sigit<span class="text-blue-600">TempMail</span></span>
+          <span id="nav-user-email" class="block text-[10px] font-semibold text-slate-500 mt-0.5 truncate max-w-[140px] sm:max-w-xs">Memverifikasi sesi...</span>
+        </div>
+      </a>
+
+      <div class="flex items-center gap-2">
+        <a href="dashboard.html" class="px-3.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 flex items-center gap-1.5 transition">
+          <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+          <span>Dashboard</span>
+        </a>
+        <button id="btn-home-logout" type="button" class="px-3 py-2 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200/70 flex items-center gap-1 transition">
+          <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">Keluar</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+
+    <!-- 1. Ringkasan Kuota & Status Akun (Grid 3 Kolom Simetris) -->
+    <section class="grid grid-cols-3 gap-2.5 sm:gap-4 max-w-3xl mx-auto">
+      <div class="glass-card rounded-2xl p-3 sm:p-4 text-center">
+        <p class="text-[10px] sm:text-xs font-semibold text-slate-500">Kuota Terpakai</p>
+        <p class="text-base sm:text-xl font-extrabold text-slate-900 mt-0.5">
+          <span id="quota-used">0</span><span class="text-xs font-medium text-slate-400"> / <span id="quota-max">-</span></span>
+        </p>
+      </div>
+      <div class="glass-card rounded-2xl p-3 sm:p-4 text-center">
+        <p class="text-[10px] sm:text-xs font-semibold text-slate-500">Sisa Kuota Hari Ini</p>
+        <p id="quota-remaining-badge" class="text-base sm:text-xl font-extrabold text-blue-600 mt-0.5">-</p>
+      </div>
+      <div class="glass-card rounded-2xl p-3 sm:p-4 text-center">
+        <p class="text-[10px] sm:text-xs font-semibold text-slate-500">Tier Akun</p>
+        <div class="flex items-center justify-center gap-1.5 mt-1">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span id="user-tier-label" class="text-xs sm:text-sm font-extrabold text-emerald-600 uppercase">VERIFIED</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Panel Utama Generator & Mailbox Aktif -->
+    <section class="max-w-3xl mx-auto">
+      <div class="glass-card rounded-3xl p-5 sm:p-7 space-y-5 relative overflow-hidden">
+        <!-- Header Card -->
+        <div class="flex items-center justify-between gap-3 pb-4 border-b border-slate-200/80">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+              <i data-lucide="inbox" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h1 class="text-sm sm:text-base font-extrabold text-slate-900">Generator TempMail Resmi</h1>
+              <p class="text-xs text-slate-500">Kuota terhubung langsung dengan akun terverifikasi Anda</p>
+            </div>
+          </div>
+          <span class="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5"></i> Terautentikasi
+          </span>
+        </div>
+
+        <!-- STATE 1: Form Buat Mailbox Baru -->
+        <div id="state-generate" class="space-y-4">
+          <div>
+            <label for="custom-prefix" class="block text-xs font-semibold text-slate-700 mb-1.5">
+              Custom Prefix Email <span class="text-slate-400 font-normal">(Opsional — kosongkan untuk acak)</span>
+            </label>
+            <div class="flex flex-col sm:flex-row gap-2.5">
+              <div class="relative flex-1">
+                <i data-lucide="at-sign" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                <input
+                  type="text"
+                  id="custom-prefix"
+                  placeholder="contoh: sigitvip2026"
+                  maxlength="24"
+                  class="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-sm outline-none transition font-mono-code"
+                />
+              </div>
+              <button
+                id="btn-generate"
+                type="button"
+                class="btn-primary px-6 py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shrink-0"
+              >
+                <i data-lucide="zap" class="w-4 h-4"></i>
+                <span>Generate Temp Mail</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Daftar Mailbox Aktif Milik User -->
+          <div id="recent-mailboxes-wrap" class="hidden pt-3 border-t border-slate-200/70">
+            <p class="text-xs font-semibold text-slate-500 mb-2">Mailbox Aktif di Akun Anda (Klik untuk membuka):</p>
+            <div id="recent-mailboxes-list" class="flex flex-wrap gap-2"></div>
+          </div>
+        </div>
+
+        <!-- STATE 2: Tampilan Mailbox Aktif -->
+        <div id="state-active-mailbox" class="hidden space-y-4">
+          <div class="glass-card-blue rounded-2xl p-5 text-white">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div class="space-y-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-0.5 rounded-full bg-white/20 text-[11px] font-semibold">Email Sementara Aktif</span>
+                  <span id="mailbox-msg-counter" class="text-xs text-blue-100">0 / 50 pesan</span>
+                </div>
+                <p id="active-email-display" class="font-mono-code text-base sm:text-xl font-bold tracking-tight truncate select-all pt-1">
+                  loading@tempmail.sigitc.my.id
+                </p>
+              </div>
+
+              <!-- Countdown Timer -->
+              <div class="flex items-center gap-2.5 bg-slate-900/25 px-3.5 py-2 rounded-xl border border-white/15 shrink-0 self-start sm:self-auto">
+                <i data-lucide="timer" class="w-4 h-4 text-amber-300"></i>
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-blue-100">Sisa Waktu</p>
+                  <p id="mailbox-countdown" class="font-mono-code text-sm font-bold text-white">00:00</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tombol Aksi Mailbox -->
+            <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 mt-4 pt-4 border-t border-white/15">
+              <button id="btn-copy-email" type="button" class="px-3.5 py-2 rounded-xl bg-white text-blue-700 hover:bg-blue-50 font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                <span>Copy Email</span>
+              </button>
+              <button id="btn-refresh-inbox" type="button" class="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition">
+                <i data-lucide="refresh-cw" id="icon-refresh" class="w-3.5 h-3.5"></i>
+                <span>Refresh</span>
+              </button>
+              <button id="btn-new-mailbox" type="button" class="px-3.5 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition">
+                <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                <span>Buat Baru</span>
+              </button>
+              <button id="btn-delete-mailbox" type="button" class="px-3.5 py-2 rounded-xl bg-red-500/85 hover:bg-red-500 text-white font-semibold text-xs flex items-center justify-center gap-1.5 sm:ml-auto transition">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                <span>Hapus</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Panel Kotak Masuk (Inbox) -->
+    <section class="max-w-3xl mx-auto">
+      <div class="glass-card rounded-3xl p-5 sm:p-6 min-h-[320px] flex flex-col">
+        <div class="flex items-center justify-between pb-4 mb-4 border-b border-slate-200/80">
+          <div class="flex items-center gap-2">
+            <h2 class="font-bold text-slate-900 text-sm sm:text-base">Kotak Masuk (Inbox)</h2>
+            <span id="inbox-count-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700">0</span>
+          </div>
+          <div class="flex items-center gap-2 text-xs text-slate-500">
+            <span class="relative flex h-2 w-2">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
+            </span>
+            <span id="auto-refresh-label">Pilih / buat mailbox...</span>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div id="inbox-empty-state" class="flex-1 flex flex-col items-center justify-center text-center py-10 px-4">
+          <div class="w-14 h-14 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center mb-3">
+            <i data-lucide="mail-open" class="w-7 h-7"></i>
+          </div>
+          <h3 class="font-bold text-slate-800 text-sm">Belum Ada Pesan Masuk</h3>
+          <p class="text-xs text-slate-500 max-w-xs mt-1">
+            Kirim email atau kode OTP ke alamat TempMail Anda. Pesan akan muncul otomatis setiap 5 detik.
+          </p>
+        </div>
+
+        <!-- Skeleton Loader -->
+        <div id="inbox-skeleton" class="hidden space-y-2.5 py-2">
+          <div class="skeleton h-14 w-full"></div>
+          <div class="skeleton h-14 w-full"></div>
+        </div>
+
+        <!-- List Pesan -->
+        <div id="inbox-list" class="hidden divide-y divide-slate-200/70"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal Detail Pesan -->
+  <div id="message-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+    <div class="glass-card rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-fade-in bg-white">
+      <div class="p-5 border-b border-slate-200 flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <h3 id="modal-msg-subject" class="font-bold text-slate-900 text-base break-words">-</h3>
+          <p class="text-xs text-slate-500 mt-1">
+            Dari: <strong id="modal-msg-sender" class="text-slate-800">-</strong> • <span id="modal-msg-date">-</span>
+          </p>
+        </div>
+        <button id="btn-close-modal" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto flex-1 space-y-4">
+        <div id="modal-msg-body" class="text-sm text-slate-800 leading-relaxed break-words whitespace-pre-wrap"></div>
+        <div id="modal-msg-attachments-wrap" class="hidden pt-4 border-t border-slate-200">
+          <p class="text-xs font-bold text-slate-700 mb-2">Lampiran:</p>
+          <div id="modal-msg-attachments" class="flex flex-wrap gap-2"></div>
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
+        <span id="modal-msg-recipient" class="text-xs font-mono-code text-slate-500 truncate"></span>
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="btn-copy-msg" type="button" class="px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs">
+            Salin Pesan
+          </button>
+          <button id="btn-close-modal-footer" type="button" class="px-4 py-2 rounded-xl bg-slate-800 text-white font-bold text-xs">
+            Tutup
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="mt-auto border-t border-slate-200/70 bg-white/60 backdrop-blur-md">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+      <p>&copy; 2026 <strong>Sigit TempMail</strong> (tempmail.sigitc.my.id).</p>
+      <div class="flex items-center gap-4">
+        <a href="dashboard.html" class="hover:text-blue-600 font-semibold">Dashboard</a>
+        <a href="https://t.me/sigitchan" target="_blank" rel="noopener" class="hover:text-blue-600 font-semibold">Owner: @sigitchan</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/utils.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

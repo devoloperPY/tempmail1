@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+  <title>Dashboard User — Sigit TempMail</title>
+  <link rel="icon" href="favicon.ico" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="flex flex-col min-h-screen">
+  <div class="bg-mesh">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+  </div>
+
+  <!-- Top Navbar -->
+  <header class="glass-nav sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-xl btn-primary flex items-center justify-center text-white shadow-md">
+          <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <span class="font-extrabold text-lg text-slate-900">Sigit<span class="text-blue-600">TempMail</span></span>
+          <span id="nav-user-tier" class="ml-1.5 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">MEMBER</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2.5">
+        <button id="btn-open-pwd-modal" type="button" class="px-3.5 py-2 rounded-xl bg-white/80 hover:bg-white border border-slate-200 text-xs font-semibold text-slate-700 flex items-center gap-1.5 transition">
+          <i data-lucide="key-round" class="w-4 h-4 text-blue-600"></i>
+          <span class="hidden sm:inline">Ubah Password</span>
+        </button>
+        <button id="btn-logout" type="button" class="px-3.5 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/70 text-xs font-semibold flex items-center gap-1.5 transition">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+          <span>Logout</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <!-- Top Overview Cards (Profile, Quota, Stats) -->
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Profile Card -->
+      <div class="glass-card rounded-3xl p-6 flex flex-col justify-between">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl btn-primary flex items-center justify-center text-white font-extrabold text-lg" id="profile-avatar">
+              U
+            </div>
+            <div class="min-w-0">
+              <h2 id="profile-name" class="font-bold text-slate-900 text-base truncate">Memuat...</h2>
+              <p id="profile-email" class="text-xs text-slate-500 truncate">-</p>
+            </div>
+          </div>
+          <span id="profile-tier-badge" class="px-2.5 py-1 rounded-full text-[11px] font-bold uppercase bg-blue-50 text-blue-700 border border-blue-200">
+            FREE
+          </span>
+        </div>
+
+        <div class="mt-5 pt-4 border-t border-slate-200/70 flex items-center justify-between text-xs">
+          <button id="btn-edit-profile" class="text-blue-600 font-semibold hover:underline flex items-center gap-1">
+            <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+            <span>Edit Nama</span>
+          </button>
+          <button id="btn-delete-account" class="text-red-500 hover:underline font-medium">
+            Hapus Akun
+          </button>
+        </div>
+      </div>
+
+      <!-- Daily Quota Card -->
+      <div class="glass-card rounded-3xl p-6 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-xs font-semibold text-slate-500">Kuota Harian Anda</p>
+            <h3 class="text-2xl font-extrabold text-slate-900 mt-0.5">
+              <span id="dash-quota-used">0</span> <span class="text-sm font-medium text-slate-400">/ <span id="dash-quota-max">0</span></span>
+            </h3>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
+            <i data-lucide="gauge" class="w-6 h-6"></i>
+          </div>
+        </div>
+
+        <div class="space-y-2 mt-4">
+          <div class="w-full h-2.5 bg-slate-200/80 rounded-full overflow-hidden">
+            <div id="dash-quota-bar" class="h-full bg-gradient-to-r from-blue-600 to-sky-400 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+          <p class="text-xs text-slate-500 flex justify-between">
+            <span>Sisa kuota hari ini:</span>
+            <strong id="dash-quota-remaining" class="text-blue-600">0 mailbox</strong>
+          </p>
+        </div>
+      </div>
+
+      <!-- User Stats Card -->
+      <div class="glass-card rounded-3xl p-6 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <p class="text-xs font-semibold text-slate-500">Statistik Penggunaan</p>
+          <i data-lucide="bar-chart-3" class="w-5 h-5 text-blue-600"></i>
+        </div>
+        <div class="grid grid-cols-2 gap-3 my-3">
+          <div class="p-3 rounded-2xl bg-slate-50/90 border border-slate-200/60">
+            <p class="text-[11px] text-slate-500">Total Mailbox</p>
+            <p id="dash-stat-mailboxes" class="text-xl font-extrabold text-slate-900 mt-0.5">0</p>
+          </div>
+          <div class="p-3 rounded-2xl bg-slate-50/90 border border-slate-200/60">
+            <p class="text-[11px] text-slate-500">Total Pesan</p>
+            <p id="dash-stat-messages" class="text-xl font-extrabold text-blue-600 mt-0.5">0</p>
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-400">Data diperbarui secara real-time dari server.</p>
+      </div>
+    </section>
+
+    <!-- Create & Manage Active Mailboxes + Live Inbox Reader -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- Left 5 Cols: Daftar Mailbox User & Quick Create -->
+      <div class="lg:col-span-5 glass-card rounded-3xl p-6 space-y-5 flex flex-col">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-bold text-slate-900 text-base">Mailbox Anda</h3>
+            <p class="text-xs text-slate-500">Buat & pilih mailbox untuk melihat pesan masuk</p>
+          </div>
+          <button id="btn-toggle-all-mailboxes" type="button" class="text-xs font-semibold text-blue-600 hover:underline">
+            Tampilkan Semua
+          </button>
+        </div>
+
+        <!-- Quick Create Form -->
+        <form id="dash-create-mailbox-form" class="flex gap-2">
+          <input
+            type="text"
+            id="dash-custom-prefix"
+            placeholder="Prefix opsional (mis: kerja)"
+            maxlength="24"
+            class="flex-1 px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 focus:border-blue-500 text-xs font-mono-code outline-none"
+          />
+          <button type="submit" class="btn-primary px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Buat Baru</span>
+          </button>
+        </form>
+
+        <!-- Mailboxes List -->
+        <div id="dash-mailboxes-list" class="space-y-2.5 flex-1 max-h-[420px] overflow-y-auto pr-1">
+          <div class="skeleton h-16 w-full"></div>
+          <div class="skeleton h-16 w-full"></div>
+        </div>
+      </div>
+
+      <!-- Right 7 Cols: Live Inbox Viewer untuk Mailbox Terpilih -->
+      <div class="lg:col-span-7 glass-card rounded-3xl p-6 flex flex-col min-h-[460px]">
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-4 mb-4 border-b border-slate-200/80">
+          <div class="min-w-0">
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-blue-600">Live Inbox Reader</span>
+            <h3 id="dash-selected-email" class="font-mono-code font-bold text-slate-900 text-sm sm:text-base truncate">
+              Pilih atau buat mailbox di sebelah kiri
+            </h3>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btn-dash-copy-email" type="button" disabled class="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold flex items-center gap-1 disabled:opacity-40">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span>Copy</span>
+            </button>
+            <button id="btn-dash-refresh-msgs" type="button" disabled class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1 disabled:opacity-40">
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+              <span>Refresh</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="dash-messages-container" class="flex-1 flex flex-col justify-center items-center text-center py-10 text-slate-500 text-xs">
+          <i data-lucide="inbox" class="w-10 h-10 text-slate-300 mb-2"></i>
+          <p>Klik salah satu mailbox aktif untuk membaca pesan masuk.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Active Sessions & Login History -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Active Sessions -->
+      <div class="glass-card rounded-3xl p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i data-lucide="smartphone" class="w-5 h-5 text-blue-600"></i>
+            <h3 class="font-bold text-slate-900 text-base">Sesi Perangkat Aktif</h3>
+          </div>
+          <button id="btn-revoke-all-sessions" type="button" class="text-xs font-semibold text-red-600 hover:underline">
+            Cabut Semua Sesi Lain
+          </button>
+        </div>
+        <div id="dash-sessions-list" class="space-y-2.5 max-h-72 overflow-y-auto">
+          <div class="skeleton h-14 w-full"></div>
+        </div>
+      </div>
+
+      <!-- Recent Login History -->
+      <div class="glass-card rounded-3xl p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i data-lucide="history" class="w-5 h-5 text-blue-600"></i>
+            <h3 class="font-bold text-slate-900 text-base">Riwayat Aktivitas Login</h3>
+          </div>
+          <span class="text-xs text-slate-400">30 Terakhir</span>
+        </div>
+        <div id="dash-login-history" class="space-y-2 max-h-72 overflow-y-auto">
+          <div class="skeleton h-12 w-full"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal: Detail Pesan -->
+  <div id="dash-msg-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+    <div class="glass-card rounded-3xl max-w-2xl w-full max-h-[85vh] flex flex-col overflow-hidden animate-fade-in">
+      <div class="p-5 border-b border-slate-200 flex items-start justify-between gap-4 bg-white">
+        <div class="min-w-0">
+          <h4 id="dash-modal-subject" class="font-bold text-slate-900 text-base break-words">-</h4>
+          <p class="text-xs text-slate-500 mt-1">Dari: <strong id="dash-modal-sender">-</strong> • <span id="dash-modal-date">-</span></p>
+        </div>
+        <button id="btn-close-dash-msg" class="p-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div id="dash-modal-body" class="p-5 overflow-y-auto flex-1 text-sm text-slate-800 whitespace-pre-wrap break-words bg-white/90"></div>
+    </div>
+  </div>
+
+  <!-- Modal: Change Password -->
+  <div id="pwd-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+    <div class="glass-card rounded-3xl p-6 max-w-md w-full space-y-4 animate-fade-in bg-white">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-slate-900 text-base">Ubah Password Akun</h3>
+        <button id="btn-close-pwd-modal" class="p-1.5 rounded-lg bg-slate-100 text-slate-600">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <form id="change-pwd-form" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Password Lama</label>
+          <input type="password" id="old-password" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-blue-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Password Baru (Min. 8 karakter, Huruf Besar, Kecil & Angka)</label>
+          <input type="password" id="new-password" required class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:border-blue-500" />
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" id="btn-cancel-pwd" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold">Batal</button>
+          <button type="submit" class="btn-primary px-4 py-2 rounded-xl text-xs font-semibold">Simpan Password</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <footer class="mt-auto border-t border-slate-200/70 bg-white/60 backdrop-blur-md">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+      <p>&copy; 2026 <strong>Sigit TempMail</strong> — Dashboard Pengguna</p>
+      <a href="https://t.me/sigitchan" target="_blank" rel="noopener" class="hover:text-blue-600 font-medium">Bantuan: @sigitchan</a>
+    </div>
+  </footer>
+
+  <script src="assets/utils.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+  <title>Verifikasi OTP — Sigit TempMail</title>
+  <link rel="icon" href="favicon.ico" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="flex flex-col min-h-screen">
+  <div class="bg-mesh">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+  </div>
+
+  <!-- Navbar -->
+  <header class="glass-nav">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl btn-primary flex items-center justify-center text-white">
+          <i data-lucide="mail-check" class="w-5 h-5"></i>
+        </div>
+        <span class="font-extrabold text-lg text-slate-900">Sigit<span class="text-blue-600">TempMail</span></span>
+      </a>
+      <a href="login.html" class="text-xs sm:text-sm font-semibold text-slate-600 hover:text-blue-600">
+        Ganti Akun / Login
+      </a>
+    </div>
+  </header>
+
+  <main class="flex-1 flex items-center justify-center p-4 sm:p-6">
+    <div class="glass-card rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-6 text-center animate-fade-in">
+      <div class="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto shadow-sm">
+        <i data-lucide="shield-check" class="w-7 h-7"></i>
+      </div>
+
+      <div class="space-y-1.5">
+        <h1 class="text-2xl font-extrabold text-slate-900">Verifikasi Kode OTP</h1>
+        <p class="text-xs sm:text-sm text-slate-500">
+          Kami telah mengirimkan 6 digit kode OTP ke email:
+        </p>
+        <p id="verify-email-display" class="text-sm font-bold text-blue-600 font-mono-code break-all">-</p>
+      </div>
+
+      <!-- Error Alert Box -->
+      <div id="auth-error-box" class="hidden p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium text-left"></div>
+
+      <form id="verify-form" class="space-y-5" novalidate>
+        <div>
+          <label for="otp-input" class="block text-xs font-semibold text-slate-600 mb-2">Masukkan 6 Digit Kode OTP</label>
+          <input
+            type="text"
+            id="otp-input"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="6"
+            placeholder="000000"
+            required
+            class="w-full py-3.5 px-4 text-center text-2xl font-extrabold tracking-[0.5em] font-mono-code rounded-2xl bg-white border-2 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/15 outline-none transition"
+          />
+        </div>
+
+        <!-- Countdown OTP -->
+        <div class="flex items-center justify-center gap-2 text-xs text-slate-600 bg-slate-100/80 py-2 px-4 rounded-xl">
+          <i data-lucide="clock" class="w-4 h-4 text-blue-600"></i>
+          <span>Kode berlaku selama: <strong id="otp-countdown" class="font-mono-code text-slate-900">10:00</strong></span>
+        </div>
+
+        <button type="submit" id="btn-verify-submit" class="btn-primary w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2">
+          <i data-lucide="check-circle" class="w-4 h-4"></i>
+          <span>Verifikasi & Masuk</span>
+        </button>
+      </form>
+
+      <div class="pt-4 border-t border-slate-200/80 flex items-center justify-between text-xs">
+        <span class="text-slate-500">Tidak menerima email?</span>
+        <button
+          type="button"
+          id="btn-resend-otp"
+          class="font-bold text-blue-600 hover:underline disabled:text-slate-400 disabled:no-underline"
+        >
+          Kirim Ulang OTP
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <script src="assets/utils.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/auth.js"></script>
+</body>
+</html>
