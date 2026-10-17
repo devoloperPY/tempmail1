@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+  <title>Daftar Akun — Sigit TempMail</title>
+  <link rel="icon" href="favicon.ico" />
+
+  <script>
+    (function () {
+      const token = localStorage.getItem('session_token');
+      if (token) {
+        window.location.replace('dashboard.html');
+      }
+    })();
+  </script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="css/style.css" />
+  
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+</head>
+<body class="flex flex-col min-h-screen">
+  <div class="bg-mesh">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+  </div>
+
+  <header class="glass-nav">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl btn-primary flex items-center justify-center text-white">
+          <i data-lucide="mail-check" class="w-5 h-5"></i>
+        </div>
+        <span class="font-extrabold text-lg text-slate-900">Sigit<span class="text-blue-600">TempMail</span></span>
+      </a>
+      <a href="login.html" class="text-xs sm:text-sm font-semibold text-blue-600 hover:underline">
+        Sudah punya akun? Login &rarr;
+      </a>
+    </div>
+  </header>
+
+  <main class="flex-1 flex items-center justify-center p-4 sm:p-6">
+    <div class="glass-card rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-5 animate-fade-in bg-white/90">
+      <div class="text-center space-y-1.5">
+        <div class="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-2 shadow-sm">
+          <i data-lucide="user-plus" class="w-6 h-6"></i>
+        </div>
+        <h1 class="text-2xl font-extrabold text-slate-900">Buat Akun Baru</h1>
+        <p class="text-xs text-slate-500">Dapatkan kuota harian lebih besar & manajemen inbox lengkap.</p>
+      </div>
+
+      <div class="p-3.5 rounded-2xl bg-blue-50/90 border border-blue-200/80 flex items-start gap-2.5 text-xs text-blue-800">
+        <i data-lucide="info" class="w-4 h-4 text-blue-600 shrink-0 mt-0.5"></i>
+        <span>Hanya email dari provider terpercaya (<strong>Gmail, Outlook, Yahoo, iCloud</strong>, dll). Email disposable akan ditolak otomatis.</span>
+      </div>
+
+      <div id="auth-error-box" class="hidden p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium"></div>
+
+      <form id="register-form" class="space-y-4" novalidate>
+        <div>
+          <label for="reg-name" class="block text-xs font-semibold text-slate-700 mb-1.5">Nama Tampilan (Display Name)</label>
+          <div class="relative">
+            <i data-lucide="user" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+            <input
+              type="text"
+              id="reg-name"
+              placeholder="Contoh: Sigit Pratama"
+              maxlength="50"
+              class="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-sm outline-none transition"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label for="reg-email" class="block text-xs font-semibold text-slate-700 mb-1.5">Alamat Email Utama</label>
+          <div class="relative">
+            <i data-lucide="mail" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+            <input
+              type="email"
+              id="reg-email"
+              required
+              placeholder="nama@gmail.com"
+              class="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-sm outline-none transition"
+            />
+          </div>
+          <p id="email-check-feedback" class="text-[11px] mt-1 hidden"></p>
+        </div>
+
+        <div>
+          <label for="reg-password" class="block text-xs font-semibold text-slate-700 mb-1.5">Password</label>
+          <div class="relative">
+            <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+            <input
+              type="password"
+              id="reg-password"
+              required
+              placeholder="Min. 8 karakter (Huruf Besar, Kecil & Angka)"
+              class="w-full pl-10 pr-10 py-3 rounded-xl bg-white border border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 text-sm outline-none transition"
+            />
+            <button type="button" id="toggle-reg-pwd" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-1.5 mt-2 text-[11px] text-slate-500">
+            <div id="chk-length" class="flex items-center gap-1"><span>○</span> Min. 8 karakter</div>
+            <div id="chk-upper" class="flex items-center gap-1"><span>○</span> Huruf besar (A-Z)</div>
+            <div id="chk-lower" class="flex items-center gap-1"><span>○</span> Huruf kecil (a-z)</div>
+            <div id="chk-number" class="flex items-center gap-1"><span>○</span> Angka (0-9)</div>
+          </div>
+        </div>
+
+        <div class="flex justify-center my-3">
+          <div class="cf-turnstile" 
+               data-sitekey="0x4AAAAAAFY_Ai9UhXghURVa" 
+               data-theme="light"
+               data-size="normal"
+               data-appearance="always"
+               data-callback="onTurnstileSuccess"
+               data-error-callback="onTurnstileError"
+               data-expired-callback="onTurnstileExpired">
+          </div>
+        </div>
+
+        <button type="submit" id="btn-register-submit" class="btn-primary w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2">
+          <span>Daftar & Kirim Kode OTP</span>
+          <i data-lucide="send" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <div class="pt-4 border-t border-slate-200/80 text-center text-xs text-slate-600">
+        Sudah punya akun? <a href="login.html" class="font-bold text-blue-600 hover:underline">Login di sini</a>
+      </div>
+    </div>
+  </main>
+
+  <script src="assets/utils.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/auth.js"></script>
+</body>
+</html>

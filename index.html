@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
+  <title>Sigit TempMail — Instant Temporary Email</title>
+  <meta name="description" content="Buat email sementara secara instan. Tanpa registrasi, tanpa spam. Gratis selamanya." />
+  <link rel="icon" href="favicon.ico" />
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@600;700&display=swap');
+    
+    body { font-family: 'Outfit', sans-serif; }
+    .font-mono-stat { font-family: 'JetBrains Mono', monospace; }
+    
+    .glass-nav {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    }
+    
+    .text-gradient {
+      background: linear-gradient(135deg, #0f172a 0%, #3b82f6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .reveal.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .delay-100 { transition-delay: 0.1s; }
+    .delay-200 { transition-delay: 0.2s; }
+    .delay-300 { transition-delay: 0.3s; }
+
+    /* Custom Scrollbar untuk Modal */
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-blue-600 selection:text-white flex flex-col min-h-screen">
+  
+  <header class="glass-nav fixed w-full top-0 z-40">
+    <div class="max-w-5xl mx-auto px-5 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white">
+          <i data-lucide="mail-check" class="w-4 h-4"></i>
+        </div>
+        <span class="font-extrabold text-lg tracking-tight text-slate-900">Sigit<span class="text-blue-600">.</span>Mail</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="login.html" class="hidden sm:block text-sm font-semibold text-slate-600 hover:text-slate-900 transition">Masuk</a>
+        <a href="register.html" class="px-4 py-2 rounded-lg text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 transition">
+          Mulai Gratis
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 pt-16">
+    <!-- HERO SECTION -->
+    <section class="relative flex items-center justify-center px-5 pt-12 pb-6">
+      <div class="max-w-3xl mx-auto text-center space-y-5">
+        
+        <div class="reveal inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 text-[11px] font-bold text-emerald-700">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          Sistem Berjalan Normal
+        </div>
+        
+        <h1 class="reveal delay-100 text-4xl sm:text-5xl md:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
+          Email Sementara.<br/>
+          <span class="text-gradient">Cepat, Aman, Gratis.</span>
+        </h1>
+        
+        <p class="reveal delay-200 text-sm sm:text-base text-slate-500 max-w-lg mx-auto leading-relaxed">
+          Hindari spam dan daftar layanan tanpa batas. Dapatkan alamat email instan dalam 3 detik. Tanpa registrasi.
+        </p>
+
+        <div class="reveal delay-300 flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <a href="register.html" class="w-full sm:w-auto px-6 py-3 rounded-xl font-bold bg-blue-600 text-white hover:bg-blue-700 transition shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 text-sm">
+            <i data-lucide="zap" class="w-4 h-4"></i> Buat Email Sekarang
+          </a>
+          <a href="login.html" class="w-full sm:w-auto px-6 py-3 rounded-xl font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 transition flex items-center justify-center gap-2 text-sm">
+            <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Masuk Dashboard
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- LIVE STATISTICS -->
+    <section class="max-w-4xl mx-auto px-5 pb-12">
+      <div class="reveal bg-white rounded-2xl p-5 sm:p-6 border border-slate-200 shadow-sm">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 divide-x-0 md:divide-x divide-slate-100 text-center">
+          
+          <div>
+            <p class="text-3xl font-extrabold text-slate-900 font-mono-stat" id="stat-total-users">...</p>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">Pengguna</p>
+          </div>
+          
+          <div>
+            <p class="text-3xl font-extrabold text-blue-600 font-mono-stat" id="stat-active-mailboxes">...</p>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">Mailbox Aktif</p>
+          </div>
+          
+          <div>
+            <p class="text-3xl font-extrabold text-emerald-500 font-mono-stat" id="stat-total-messages">...</p>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">Pesan Masuk</p>
+          </div>
+          
+          <div>
+            <p class="text-3xl font-extrabold text-slate-900 font-mono-stat">99<span class="text-lg">.9%</span></p>
+            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">Uptime</p>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="max-w-5xl mx-auto px-5 pb-16 space-y-6">
+      <div class="text-center reveal">
+        <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">Dirancang untuk Privasi.</h2>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        <div class="reveal delay-100 bg-white rounded-2xl p-5 border border-slate-200 hover:shadow-md transition duration-300">
+          <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3">
+            <i data-lucide="shield-check" class="w-5 h-5"></i>
+          </div>
+          <h3 class="font-bold text-slate-900 text-base mb-1">Privasi Total</h3>
+          <p class="text-xs text-slate-500 leading-relaxed">Kami tidak meminta data pribadi. Email Anda dihapus permanen setelah masa aktif.</p>
+        </div>
+
+        <div class="reveal delay-200 bg-white rounded-2xl p-5 border border-slate-200 hover:shadow-md transition duration-300">
+          <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+            <i data-lucide="zap" class="w-5 h-5"></i>
+          </div>
+          <h3 class="font-bold text-slate-900 text-base mb-1">Instan & Real-time</h3>
+          <p class="text-xs text-slate-500 leading-relaxed">Didukung jaringan Cloudflare. Email masuk dalam hitungan milidetik tanpa delay.</p>
+        </div>
+
+        <div class="reveal delay-300 bg-white rounded-2xl p-5 border border-slate-200 hover:shadow-md transition duration-300">
+          <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-3">
+            <i data-lucide="key-round" class="w-5 h-5"></i>
+          </div>
+          <h3 class="font-bold text-slate-900 text-base mb-1">Ekstraksi OTP</h3>
+          <p class="text-xs text-slate-500 leading-relaxed">Sistem pintar kami otomatis mendeteksi kode verifikasi dan tautan aktif.</p>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER BARU -->
+  <footer class="border-t border-slate-200 bg-white py-5 mt-auto">
+    <div class="max-w-5xl mx-auto px-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+      
+      <div class="flex items-center gap-2">
+        <div class="w-6 h-6 rounded-md bg-blue-600 flex items-center justify-center text-white">
+          <i data-lucide="mail-check" class="w-3.5 h-3.5"></i>
+        </div>
+        <span class="font-bold text-xs text-slate-700">Sigit<span class="text-blue-600">.</span>Mail</span>
+      </div>
+
+      <div class="flex items-center gap-4">
+        <!-- Tombol Syarat & Ketentuan -->
+        <button id="btn-open-tos" type="button" class="text-xs font-semibold text-slate-500 hover:text-blue-600 transition">
+          Syarat & Ketentuan
+        </button>
+
+        <!-- Tombol Telegram -->
+        <a href="https://t.me/sigitchan" target="_blank" rel="noopener" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100 transition text-xs font-bold">
+          <i data-lucide="send" class="w-3.5 h-3.5"></i>
+          <span>Telegram</span>
+        </a>
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- MODAL SYARAT & KETENTUAN -->
+  <div id="tos-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 opacity-0">
+    <div class="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl transform scale-95 transition-transform duration-300" id="tos-modal-content">
+      
+      <!-- Header Modal -->
+      <div class="flex items-center justify-between p-5 border-b border-slate-100">
+        <div class="flex items-center gap-2">
+          <i data-lucide="file-text" class="w-5 h-5 text-blue-600"></i>
+          <h3 class="font-bold text-slate-900 text-base">Syarat & Ketentuan</h3>
+        </div>
+        <button id="btn-close-tos" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Isi Modal -->
+      <div class="p-6 overflow-y-auto custom-scrollbar text-sm text-slate-600 space-y-4">
+        <p class="text-xs text-slate-400 mb-4">Terakhir diperbarui: 17 Oktober 2026</p>
+
+        <h4 class="font-bold text-slate-900">1. Penerimaan Ketentuan</h4>
+        <p>Dengan mengakses dan menggunakan layanan Sigit TempMail ("Layanan"), Anda setuju untuk terikat dengan Syarat dan Ketentuan ini. Jika Anda tidak setuju, harap berhenti menggunakan Layanan.</p>
+
+        <h4 class="font-bold text-slate-900">2. Penggunaan Layanan</h4>
+        <p>Layanan ini disediakan untuk tujuan <strong>privasi dan verifikasi</strong>. Anda dilarang menggunakan alamat email sementara ini untuk:</p>
+        <ul class="list-disc pl-5 space-y-1">
+          <li>Aktivitas ilegal, penipuan, atau phishing.</li>
+          <li>Mengirim spam massal atau melakukan serangan siber.</li>
+          <li>Membuat akun massal yang bertujuan merusak layanan pihak ketiga.</li>
+          <li>Segala bentuk pelanggaran hukum yang berlaku di Indonesia.</li>
+        </ul>
+
+        <h4 class="font-bold text-slate-900">3. Kebijakan Privasi & Data</h4>
+        <p>Kami menghormati privasi Anda. Sistem kami <strong>tidak menyimpan metadata pribadi</strong> selain alamat IP untuk keperluan keamanan (anti-spam). Seluruh pesan dan alamat email yang dibuat akan <strong>dihapus secara otomatis dan permanen</strong> setelah masa aktif habis (5 jam untuk Free, 2 hari untuk Premium).</p>
+
+        <h4 class="font-bold text-slate-900">4. Batasan Tanggung Jawab</h4>
+        <p>Sigit TempMail tidak bertanggung jawab atas kehilangan data, kegagalan verifikasi, atau kerugian yang timbul akibat penggunaan alamat email sementara ini. Layanan ini bersifat "sebagaimana adanya" (as-is).</p>
+
+        <h4 class="font-bold text-slate-900">5. Perubahan Ketentuan</h4>
+        <p>Kami berhak mengubah Syarat dan Ketentuan ini sewaktu-waktu tanpa pemberitahuan sebelumnya. Penggunaan Layanan yang berkelanjutan berarti Anda menerima perubahan tersebut.</p>
+      </div>
+
+      <!-- Footer Modal -->
+      <div class="p-4 border-t border-slate-100 bg-slate-50 rounded-b-2xl text-center">
+        <button id="btn-close-tos-footer" class="w-full py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 transition">
+          Saya Mengerti
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="assets/utils.js"></script>
+  <script src="assets/api.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (window.lucide) window.lucide.createIcons();
+      
+      // --- LOGIC ANIMASI SCROLL ---
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('active');
+          } else {
+            entry.target.classList.remove('active');
+          }
+        });
+      }, { threshold: 0.1 });
+
+      document.querySelectorAll('.reveal').forEach((el) => observer.observe(el));
+
+      // --- LOGIC MODAL SYARAT & KETENTUAN ---
+      const tosModal = document.getElementById('tos-modal');
+      const tosContent = document.getElementById('tos-modal-content');
+      const btnOpenTos = document.getElementById('btn-open-tos');
+      const btnCloseTos = document.getElementById('btn-close-tos');
+      const btnCloseTosFooter = document.getElementById('btn-close-tos-footer');
+
+      function openTos() {
+        tosModal.classList.remove('hidden');
+        // Timeout kecil biar transisi CSS-nya jalan
+        setTimeout(() => {
+          tosModal.classList.remove('opacity-0');
+          tosContent.classList.remove('scale-95');
+          tosContent.classList.add('scale-100');
+        }, 10);
+      }
+
+      function closeTos() {
+        tosModal.classList.add('opacity-0');
+        tosContent.classList.remove('scale-100');
+        tosContent.classList.add('scale-95');
+        setTimeout(() => {
+          tosModal.classList.add('hidden');
+        }, 300);
+      }
+
+      if (btnOpenTos) btnOpenTos.addEventListener('click', openTos);
+      if (btnCloseTos) btnCloseTos.addEventListener('click', closeTos);
+      if (btnCloseTosFooter) btnCloseTosFooter.addEventListener('click', closeTos);
+      
+      // Tutup modal kalo klik di luar area modal
+      tosModal.addEventListener('click', (e) => {
+        if (e.target === tosModal) closeTos();
+      });
+      
+      // --- AMBIL STATISTIK DARI DB ---
+      try {
+        const res = await apiFetch('/api/web/stats', { skipAuthRedirect: true });
+        if (res?.data) {
+          const d = res.data;
+          const format = (n) => Number(n || 0).toLocaleString('id-ID');
+          
+          if (document.getElementById('stat-total-users')) document.getElementById('stat-total-users').textContent = format(d.total_visitors);
+          if (document.getElementById('stat-active-mailboxes')) document.getElementById('stat-active-mailboxes').textContent = format(d.active_mailboxes);
+          if (document.getElementById('stat-total-messages')) document.getElementById('stat-total-messages').textContent = format(d.total_messages);
+        }
+      } catch (e) {}
+    });
+  </script>
+</body>
+</html>
