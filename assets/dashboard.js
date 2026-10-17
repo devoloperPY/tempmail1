@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentMessageId = null;
   let currentMessageBody = '';
   let currentOtpCode = '';
+  let isUserPremium = false;
 
   async function initDashboard() {
     try {
@@ -22,7 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       currentSessionId = meRes.data.session_id;
+      isUserPremium = meRes.data.user.tier === 'premium';
+      
       renderProfile(meRes.data.user);
+      setupPrefixInput();
 
       await Promise.allSettled([
         loadQuota(),
@@ -37,6 +41,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function setupPrefixInput() {
+    const prefixInput = document.getElementById('dash-custom-prefix');
+    if (!prefixInput) return;
+    
+    if (!isUserPremium) {
+      prefixInput.disabled = true;
+      prefixInput.placeholder = "Khusus Premium (User Free dapat nama acak)";
+      prefixInput.classList.add('bg-slate-100', 'cursor-not-allowed', 'text-slate-400');
+      prefixInput.title = "Upgrade ke Premium untuk custom nama email";
+    }
+  }
+
   function renderProfile(user) {
     if (!user) return;
     setToken(getToken(), user);
@@ -44,9 +60,18 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('profile-name').textContent = name;
     document.getElementById('profile-email').textContent = user.email;
     document.getElementById('profile-avatar').textContent = name.charAt(0).toUpperCase();
+    
     const tier = (user.tier || 'FREE').toUpperCase();
     document.getElementById('profile-tier-badge').textContent = tier;
     document.getElementById('nav-user-tier').textContent = tier;
+    
+    if (user.tier === 'premium') {
+      document.getElementById('profile-tier-badge').className = 'px-2.5 py-1 rounded-full text-[11px] font-bold uppercase bg-amber-50 text-amber-700 border border-amber-200';
+      document.getElementById('nav-user-tier').className = 'ml-1.5 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-700';
+    } else {
+      document.getElementById('profile-tier-badge').className = 'px-2.5 py-1 rounded-full text-[11px] font-bold uppercase bg-blue-50 text-blue-700 border border-blue-200';
+      document.getElementById('nav-user-tier').className = 'ml-1.5 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-blue-100 text-blue-700';
+    }
   }
 
   async function loadQuota() {
@@ -97,6 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isSelected = selectedMailbox && selectedMailbox.id === m.id;
         const msgCount = m.message_count ?? 0;
         const hasUnread = msgCount > 0;
+        const isPremiumMb = m.is_premium === 1;
 
         let sisaWaktu = m.expires_at;
         if (typeof m.remaining_seconds === 'number') {
@@ -115,6 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <div class="flex items-center gap-1.5">
                 ${hasUnread ? '<span class="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0"></span>' : ''}
                 <p class="font-mono-code text-[11px] font-bold text-slate-900 truncate">${Utils.escapeHtml(m.email)}</p>
+                ${isPremiumMb ? '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">PRO</span>' : ''}
               </div>
               <p class="text-[10px] text-slate-500 mt-0.5 flex items-center gap-2">
                 <span class="inline-flex items-center gap-1"><i data-lucide="mail" class="w-3 h-3"></i>${msgCount}</span>
@@ -532,8 +559,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('dash-create-mailbox-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    
     const prefixInput = document.getElementById('dash-custom-prefix');
-    const prefix = prefixInput.value.trim();
+    const prefix = isUserPremium ? prefixInput.value.trim() : '';
 
     Utils.showLoading('Membuat mailbox baru...');
     try {
@@ -541,7 +569,9 @@ document.addEventListener('DOMContentLoaded', () => {
         method: 'POST',
         body: prefix ? { prefix } : {}
       });
-      prefixInput.value = '';
+      
+      if (isUserPremium && prefixInput) prefixInput.value = '';
+      
       Utils.showToast(`Mailbox ${res.data.email} berhasil dibuat!`, 'success');
       await Promise.all([loadQuota(), loadStats(), loadMailboxes()]);
       selectMailbox({ id: res.data.id, email: res.data.email });
