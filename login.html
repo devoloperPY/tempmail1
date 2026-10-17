@@ -8,6 +8,9 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="css/style.css" />
+  
+  <!-- Script Turnstile -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body class="flex flex-col min-h-screen">
   <div class="bg-mesh">
@@ -76,6 +79,19 @@
           </div>
         </div>
 
+        <!-- Widget Captcha -->
+        <div class="flex justify-center my-2">
+          <div class="cf-turnstile" 
+               data-sitekey="0x4AAAAAAFY_Ai9UhXghURVa" 
+               data-theme="light"
+               data-size="normal"
+               data-appearance="always"
+               data-callback="onTurnstileSuccess"
+               data-error-callback="onTurnstileError"
+               data-expired-callback="onTurnstileExpired">
+          </div>
+        </div>
+
         <button type="submit" id="btn-login-submit" class="btn-primary w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2">
           <span>Masuk ke Dashboard</span>
           <i data-lucide="arrow-right" class="w-4 h-4"></i>
@@ -90,6 +106,27 @@
 
   <script src="assets/utils.js"></script>
   <script src="assets/api.js"></script>
+  
+  <script>
+    // Logic Turnstile
+    let turnstileToken = '';
+
+    window.onTurnstileSuccess = function(token) {
+      turnstileToken = token;
+      console.log('✅ Turnstile Success');
+    };
+
+    window.onTurnstileError = function(errorCode) {
+      console.error('❌ Turnstile Error:', errorCode);
+      turnstileToken = '';
+    };
+
+    window.onTurnstileExpired = function() {
+      console.warn('⚠️ Turnstile Expired');
+      turnstileToken = '';
+    };
+  </script>
+
   <script src="assets/auth.js"></script>
 </body>
 </html>
