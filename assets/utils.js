@@ -46,8 +46,14 @@ const Utils = {
       const absSec = Math.abs(diffSec);
       if (absSec < 60) return `dalam ${absSec} dtk`;
       if (absSec < 3600) return `dalam ${Math.floor(absSec / 60)} mnt`;
-      if (absSec < 86400) return `dalam ${Math.floor(absSec / 3600)} jam`;
-      return `dalam ${Math.floor(absSec / 86400)} hari`;
+      if (absSec < 86400) {
+        const h = Math.floor(absSec / 3600);
+        const m = Math.floor((absSec % 3600) / 60);
+        return `dalam ${h} jam ${m} mnt`;
+      }
+      const d = Math.floor(absSec / 86400);
+      const h = Math.floor((absSec % 86400) / 3600);
+      return `dalam ${d} hari ${h} jam`;
     }
 
     if (diffSec < 15) return 'Baru saja';
@@ -74,12 +80,20 @@ const Utils = {
 
     const compute = () => {
       const remainingSeconds = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
-      const hours = Math.floor(remainingSeconds / 3600);
+      
+      const days = Math.floor(remainingSeconds / 86400);
+      const hours = Math.floor((remainingSeconds % 86400) / 3600);
       const mins = Math.floor((remainingSeconds % 3600) / 60);
       const secs = remainingSeconds % 60;
-      const formatted = hours > 0
-        ? `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-        : `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+      let formatted = '';
+      if (days > 0) {
+        formatted = `${days}h ${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      } else if (hours > 0) {
+        formatted = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      } else {
+        formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      }
 
       if (typeof onTick === 'function') {
         onTick({ formatted, remainingSeconds });
