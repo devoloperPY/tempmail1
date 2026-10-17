@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const inboxEmptyState = document.getElementById('inbox-empty-state');
   const inboxSkeleton = document.getElementById('inbox-skeleton');
   const inboxList = document.getElementById('inbox-list');
+  const btnRefreshInbox = document.getElementById('btn-refresh-inbox');
 
   async function verifyUserSession() {
     try {
@@ -76,6 +77,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       const tierLabel = document.getElementById('user-tier-label');
       if (navEmail) navEmail.textContent = user.email;
       if (tierLabel) tierLabel.textContent = (user.tier || 'MEMBER').toUpperCase();
+      
+      if (user.tier === 'free' && inputPrefix) {
+        inputPrefix.disabled = true;
+        inputPrefix.placeholder = "Khusus Premium (User Free dapat nama acak)";
+        inputPrefix.classList.add('bg-slate-100', 'cursor-not-allowed');
+        const hint = document.getElementById('prefix-hint');
+        if (hint) hint.textContent = "(Khusus Premium)";
+      }
+      
       return true;
     } catch (err) {
       clearToken();
@@ -146,7 +156,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    const prefix = inputPrefix ? inputPrefix.value.trim() : '';
+    const isPremium = document.getElementById('user-tier-label')?.textContent === 'PREMIUM';
+    const prefix = (isPremium && inputPrefix) ? inputPrefix.value.trim() : '';
 
     Utils.showLoading('Membuat alamat email sementara...');
     try {
@@ -233,7 +244,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (mailboxMsgCounter) {
       mailboxMsgCounter.textContent = `${data.message_count ?? 0} / ${data.max_messages ?? 50} pesan`;
     }
-    if (autoRefreshLabel) autoRefreshLabel.textContent = 'Refresh manual (klik ikon putar)';
+    if (autoRefreshLabel) autoRefreshLabel.textContent = 'Manual refresh';
 
     if (countdownInstance) countdownInstance.stop();
     const target = data.remaining_seconds ?? data.expires_at;
@@ -325,7 +336,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     } finally {
       if (refreshIcon) {
-        setTimeout(() => refreshIcon.classList.remove('animate-spin'), 400);
+        setTimeout(() => refreshIcon.classList.remove('animate-spin'), 600);
       }
     }
   }
@@ -401,9 +412,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  const btnRefreshInbox = document.getElementById('btn-refresh-inbox');
   if (btnRefreshInbox) {
-    btnRefreshInbox.addEventListener('click', () => fetchInboxMessages(false));
+    btnRefreshInbox.addEventListener('click', () => {
+      fetchInboxMessages(false);
+    });
   }
 
   const btnNewMailbox = document.getElementById('btn-new-mailbox');
