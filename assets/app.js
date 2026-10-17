@@ -45,7 +45,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let currentMailboxId = localStorage.getItem(STORAGE_KEYS.MAILBOX_ID) || null;
   let currentMailboxEmail = '';
-  let inboxInterval = null;
   let countdownInstance = null;
   let lastOpenedMessageBody = '';
 
@@ -209,10 +208,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function stopTimers() {
-    if (inboxInterval) {
-      clearInterval(inboxInterval);
-      inboxInterval = null;
-    }
     if (countdownInstance) {
       countdownInstance.stop();
       countdownInstance = null;
@@ -238,7 +233,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (mailboxMsgCounter) {
       mailboxMsgCounter.textContent = `${data.message_count ?? 0} / ${data.max_messages ?? 50} pesan`;
     }
-    if (autoRefreshLabel) autoRefreshLabel.textContent = 'Auto-refresh aktif (5 dtk)';
+    if (autoRefreshLabel) autoRefreshLabel.textContent = 'Refresh manual (klik ikon putar)';
 
     if (countdownInstance) countdownInstance.stop();
     const target = data.remaining_seconds ?? data.expires_at;
@@ -258,8 +253,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     fetchInboxMessages(true);
-    if (inboxInterval) clearInterval(inboxInterval);
-    inboxInterval = setInterval(() => fetchInboxMessages(false), 5000);
   }
 
   async function fetchInboxMessages(showSkeleton = false) {
