@@ -94,13 +94,27 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function loadStats() {
-    const res = await apiFetch('/api/web/user/stats');
-    const s = res?.data || {};
-    const mbTotal = typeof s.mailboxes === 'object' ? (s.mailboxes.total ?? s.mailboxes.active ?? 0) : (s.mailboxes ?? 0);
-    const msgTotal = typeof s.messages === 'object' ? (s.messages.total ?? 0) : (s.messages ?? 0);
+    try {
+      const res = await apiFetch('/api/web/user/stats');
+      const s = res?.data || {};
+      
+      const mbTotal = typeof s.mailboxes === 'object' ? (s.mailboxes.total ?? s.mailboxes.active ?? 0) : (s.mailboxes ?? 0);
+      const msgTotal = typeof s.messages === 'object' ? (s.messages.total ?? 0) : (s.messages ?? 0);
 
-    document.getElementById('dash-stat-mailboxes').textContent = mbTotal;
-    document.getElementById('dash-stat-messages').textContent = msgTotal;
+      document.getElementById('dash-stat-mailboxes').textContent = mbTotal;
+      document.getElementById('dash-stat-messages').textContent = msgTotal;
+
+      const globalEl = document.getElementById('dash-global-users');
+      if (globalEl) {
+        if (s.global_total_users !== undefined && s.global_total_users !== null) {
+          globalEl.textContent = Number(s.global_total_users).toLocaleString('id-ID');
+        } else {
+          globalEl.textContent = '0'; 
+        }
+      }
+    } catch (e) {
+      console.error('Gagal load stats', e);
+    }
   }
 
   async function loadMailboxes() {
