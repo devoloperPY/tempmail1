@@ -12,7 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentMessageId = null;
   let currentMessageBody = '';
   let currentOtpCode = '';
-  let messagesCache = [];
 
   async function initDashboard() {
     try {
@@ -98,6 +97,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const isSelected = selectedMailbox && selectedMailbox.id === m.id;
         const msgCount = m.message_count ?? 0;
         const hasUnread = msgCount > 0;
+
+        let sisaWaktu = m.expires_at;
+        if (typeof m.remaining_seconds === 'number') {
+          sisaWaktu = Date.now() + (m.remaining_seconds * 1000);
+        } else if (m.expires_at) {
+          if (typeof m.expires_at === 'number' && m.expires_at < 1e12) {
+            sisaWaktu = m.expires_at * 1000;
+          }
+        }
+
         return `
           <div data-id="${Utils.escapeHtml(m.id)}" data-email="${Utils.escapeHtml(m.email)}" class="dash-mb-item p-3 rounded-2xl border ${
           isSelected ? 'bg-blue-50/90 border-blue-400' : 'bg-white/80 border-slate-200/80 hover:border-blue-300'
@@ -109,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
               <p class="text-[10px] text-slate-500 mt-0.5 flex items-center gap-2">
                 <span class="inline-flex items-center gap-1"><i data-lucide="mail" class="w-3 h-3"></i>${msgCount}</span>
-                <span class="inline-flex items-center gap-1"><i data-lucide="clock" class="w-3 h-3"></i>${Utils.formatRelative(m.expires_at)}</span>
+                <span class="inline-flex items-center gap-1 text-amber-600 font-medium"><i data-lucide="clock" class="w-3 h-3"></i>${Utils.formatRelative(sisaWaktu)}</span>
               </p>
             </div>
             <button type="button" data-del-id="${Utils.escapeHtml(m.id)}" class="btn-del-mb p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition" title="Hapus Mailbox">
@@ -213,11 +222,8 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         `;
         if (window.lucide) window.lucide.createIcons();
-        messagesCache = [];
         return;
       }
-
-      messagesCache = messages;
 
       list.innerHTML = `
         <div class="divide-y divide-slate-200/70">
