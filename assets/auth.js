@@ -23,16 +23,29 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'dashboard.html';
   }
 
-  if (isLoggedIn()) {
-    apiFetch('/api/web/auth/me', { skipAuthRedirect: true })
-      .then((res) => {
-        if (res?.success) {
-          const user = res.data?.user;
-          setToken(getToken(), user);
-          window.location.href = getPostLoginRedirect(user);
-        }
-      })
-      .catch(() => clearToken());
+  function currentPage() {
+    var p = window.location.pathname.split('/').pop() || '';
+    if (!p || p === '/' || p === 'index.html') return 'index';
+    return p.replace('.html', '');
+  }
+
+  var page = currentPage();
+
+  if (page === 'login' || page === 'register') {
+    if (isLoggedIn()) {
+      apiFetch('/api/web/auth/me', { skipAuthRedirect: true })
+        .then(function(res) {
+          if (res && res.success && res.data && res.data.user) {
+            var user = res.data.user;
+            setToken(getToken(), user);
+            var dest = getPostLoginRedirect(user);
+            if (page === 'login') {
+              window.location.replace(dest);
+            }
+          }
+        })
+        .catch(function() { clearToken(); });
+    }
   }
 
   const errorBox = document.getElementById('auth-error-box');
@@ -284,10 +297,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const { token, user } = res.data;
         setToken(token, user);
-        Utils.showToast('Login berhasil! Selamat datang kembali.', 'success');
+
+        var dest = getPostLoginRedirect(user);
+        Utils.showToast('Login berhasil! Mengalihkan...', 'success');
 
         setTimeout(() => {
-          window.location.href = getPostLoginRedirect(user);
+          window.location.replace(dest);
         }, 600);
       } catch (err) {
         const msg = err.message || 'Email atau password salah.';
