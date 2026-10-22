@@ -884,9 +884,46 @@
   }
 
   function openTopupInfo() {
-    const msg = 'Topup poin dilakukan manual oleh admin. Hubungi @sigitchan di Telegram untuk pembelian poin.';
-    if (confirm(msg)) {
-      window.open('https://t.me/sigitchan', '_blank', 'noopener');
+    switchView('points');
+    toast('Pilih paket di bawah lalu hubungi admin.', 'info');
+  }
+
+  function handleBuyPoin(amount) {
+    const username = 'sigitchan';
+    const message = 'Halo admin, saya mau beli paket ' + fmtNum(amount) + ' poin untuk akun ' + (state.user?.email || '-');
+    const url = 'https://t.me/' + username + '?text=' + encodeURIComponent(message);
+    window.open(url, '_blank', 'noopener');
+  }
+
+  function handleClearCache() {
+    if (!confirm('Bersihkan cache dan muat ulang halaman? Sesi login tetap aman.')) return;
+
+    try {
+      if (window.caches) {
+        caches.keys().then(function (names) {
+          return Promise.all(names.map(function (name) {
+            return caches.delete(name);
+          }));
+        });
+      }
+
+      const token = getToken();
+      const user = getCurrentUser();
+      const mailboxId = localStorage.getItem(STORAGE_KEYS.MAILBOX_ID);
+
+      localStorage.clear();
+      sessionStorage.clear();
+
+      if (token) localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+      if (user) localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+      if (mailboxId) localStorage.setItem(STORAGE_KEYS.MAILBOX_ID, mailboxId);
+
+      toast('Cache dibersihkan. Memuat ulang...', 'success');
+      setTimeout(function () {
+        window.location.reload(true);
+      }, 500);
+    } catch (e) {
+      toast('Gagal membersihkan cache: ' + e.message, 'error');
     }
   }
 
@@ -1131,6 +1168,8 @@
     deleteDnsRecord: deleteDnsRecord,
     switchAccTab: switchAccTab,
     openTopupInfo: openTopupInfo,
+    handleBuyPoin: handleBuyPoin,
+    handleClearCache: handleClearCache,
     loadPoints: loadPoints,
     refreshSidebarBadges: loadSubdomainsSummary,
     toast: toast,
@@ -1159,6 +1198,8 @@
   window.deleteDnsRecord = deleteDnsRecord;
   window.switchAccTab = switchAccTab;
   window.openTopupInfo = openTopupInfo;
+  window.handleBuyPoin = handleBuyPoin;
+  window.handleClearCache = handleClearCache;
   window.revokeSession = revokeSession;
   window.saveProfile = saveProfile;
   window.changePassword = changePassword;
