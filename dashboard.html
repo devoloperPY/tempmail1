@@ -93,16 +93,21 @@
     </a>
 
     <div class="dash-nav-group">Pengaturan</div>
-    <a onclick="switchView('account', event)" data-view="account" class="dash-nav-item">
-      <i data-lucide="user" class="w-4 h-4"></i>
-      <span>Akun</span>
-    </a>
-    <a href="https://t.me/sigitchan" target="_blank" rel="noopener" class="dash-nav-item">
-      <i data-lucide="life-buoy" class="w-4 h-4"></i>
-      <span>Bantuan</span>
-      <i data-lucide="arrow-up-right" class="w-3 h-3 ml-auto text-slate-300"></i>
-    </a>
-  </nav>
+<a onclick="switchView('account', event)" data-view="account" class="dash-nav-item">
+  <i data-lucide="user" class="w-4 h-4"></i>
+  <span>Akun</span>
+</a>
+
+<button onclick="handleClearCache()" class="dash-clear-cache">
+  <i data-lucide="trash-2" class="w-4 h-4"></i>
+  <span>Bersihkan Cache</span>
+</button>
+
+<a href="https://t.me/sigitchan" target="_blank" rel="noopener" class="dash-nav-item mt-2">
+  <i data-lucide="life-buoy" class="w-4 h-4"></i>
+  <span>Bantuan</span>
+  <i data-lucide="arrow-up-right" class="w-3 h-3 ml-auto text-slate-300"></i>
+</a>
 
   <div class="dash-sidebar-foot">
     <button onclick="switchView('account')" class="dash-user-card">
