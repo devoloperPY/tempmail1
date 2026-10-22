@@ -486,22 +486,6 @@
 
 </main>
 
-<div id="sd-detail-overlay" onclick="closeSubdomainDetail()" class="dash-detail-overlay hidden" aria-hidden="true"></div>
-
-<aside id="sd-detail-panel" class="dash-detail-panel" aria-label="Detail subdomain">
-  <div class="dash-detail-head">
-    <button onclick="closeSubdomainDetail()" class="dash-icon-btn" aria-label="Tutup detail">
-      <i data-lucide="arrow-left" class="w-4 h-4"></i>
-    </button>
-    <div class="min-w-0 flex-1">
-      <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Detail Subdomain</p>
-      <h3 id="sd-detail-title" class="font-mono-code text-sm font-extrabold text-slate-900 break-all">-</h3>
-    </div>
-  </div>
-
-  <div id="sd-detail-body" class="dash-detail-body dash-scroll"></div>
-</aside>
-
 <div id="create-subdomain-modal" class="dash-modal hidden" aria-hidden="true">
   <div class="dash-modal-card">
     <div class="dash-modal-head">
@@ -589,6 +573,19 @@
       <button onclick="closeCreateSubdomainModal()" class="dash-btn-secondary px-4 py-2 rounded-lg text-xs font-semibold">Batal</button>
       <button id="cs-btn-submit" class="btn-primary px-4 py-2 rounded-lg text-xs font-semibold">Buat Sekarang</button>
     </div>
+  </div>
+</div>
+
+<div id="settings-modal" class="dash-modal hidden" aria-hidden="true">
+  <div class="dash-modal-card">
+    <div class="dash-modal-head">
+      <div>
+        <h3 class="font-bold text-sm text-slate-900">Setting Subdomain</h3>
+        <p class="text-[11px] text-slate-500 font-mono-code mt-0.5" id="settings-title">...</p>
+      </div>
+      <button onclick="closeSettingsModal()" class="dash-icon-btn"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <div class="p-4 overflow-y-auto flex-1 dash-scroll" id="settings-body"></div>
   </div>
 </div>
 
