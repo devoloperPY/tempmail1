@@ -9,7 +9,7 @@
     currentDnsEdit: null,
     currentFilter: 'all',
     createKind: 'pointing',
-    pointsPage: 0,
+    expandedId: null,
     initialized: false
   };
 
@@ -209,7 +209,7 @@
         if (t.reason === 'signup_bonus') label = 'Signup bonus';
         else if (t.reason === 'create_pointing_subdomain') label = 'Create subdomain (pointing)';
         else if (t.reason === 'create_termux_subdomain') label = 'Create subdomain (termux)';
-        
+
         return (
           '<div class="dash-activity-row">' +
             '<div class="dash-activity-icon ' + iconCls + '">' + (isPlus ? '+' : '−') + '</div>' +
@@ -239,9 +239,11 @@
     try {
       const res = await apiFetch('/api/web/user/subdomains');
       const subs = res?.data?.subdomains || [];
-      const active = subs.filter(function (s) { return s.status !== 'blocked'; }).length;
+      const active = subs.filter(function (s) {
+        return s.status !== 'blocked';
+      }).length;
       const max = state.user?.tier === 'premium' ? 20 : 3;
-      
+
       if ($('ov-subdomain')) $('ov-subdomain').textContent = active;
       if ($('ov-subdomain-max')) $('ov-subdomain-max').textContent = max;
       if ($('nav-subdomain-count')) $('nav-subdomain-count').textContent = active + '/' + max + ' subdomain';
@@ -255,7 +257,9 @@
   async function loadSubdomains() {
     const list = $('sd-list');
     if (!list) return;
-    list.innerHTML = '<div class="skeleton h-24 w-full rounded-2xl mb-2"></div><div class="skeleton h-24 w-full rounded-2xl"></div>';
+    list.innerHTML =
+      '<div class="skeleton h-24 w-full rounded-2xl mb-2"></div>' +
+      '<div class="skeleton h-24 w-full rounded-2xl"></div>';
     try {
       const res = await apiFetch('/api/web/user/subdomains');
       state.subdomains = res?.data?.subdomains || [];
@@ -268,8 +272,15 @@
 
   function filterSubdomains(kind, btn) {
     state.currentFilter = kind;
-    $all('.dash-filter-pill').forEach(function (b) { b.classList.remove('active'); });
+    $all('.dash-filter-pill').forEach(function (b) {
+      b.classList.remove('active');
+    });
     if (btn) btn.classList.add('active');
+    renderSubdomains();
+  }
+
+  function toggleExpand(id) {
+    state.expandedId = (state.expandedId === id) ? null : id;
     renderSubdomains();
   }
 
@@ -283,14 +294,15 @@
         });
 
     if (!subs.length) {
-      list.innerHTML =
+      list.innerHTML = (
         '<div class="glass-card rounded-2xl p-10 text-center">' +
           '<div class="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3">' +
             '<i data-lucide="globe" class="w-6 h-6"></i>' +
           '</div>' +
           '<p class="text-sm font-semibold text-slate-700">Belum ada subdomain</p>' +
           '<p class="text-xs text-slate-500 mt-1">Buat subdomain baru dengan tombol di atas.</p>' +
-        '</div>';
+        '</div>'
+      );
       if (window.lucide) window.lucide.createIcons();
       return;
     }
@@ -298,71 +310,84 @@
     list.innerHTML = subs.map(function (s) {
       const typeClass = s.is_termux ? 'dash-badge-termux' : 'dash-badge-pointing';
       const typeLabel = s.is_termux ? 'Termux' : 'Pointing';
-      
       const statusClass = s.verified ? 'dash-badge-active' : (s.status === 'blocked' ? 'dash-badge-blocked' : 'dash-badge-pending');
       const statusLabel = s.verified ? 'Active' : (s.status === 'blocked' ? 'Blocked' : 'Pending');
-      
       const proxyLabel = s.proxied ? 'ON' : 'OFF';
       const proxyCls = s.proxied ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600';
-      
       const targetLine = s.is_termux
         ? 'Port ' + (s.service_port || 3000) + ' &middot; ' + (s.service_type || 'http')
         : s.target || '-';
-
       const createdDate = s.created_at ? fmtDate(s.created_at) : '-';
 
+      const isExpanded = state.expandedId === s.id;
+
+      let accordionHtml = '';
+      if (isExpanded) {
+        accordionHtml = (
+          '<div class="accordion-content border-t border-slate-100 mt-3 pt-3">' +
+            '<div class="flex flex-col gap-2 mb-3">' +
+              '<div class="flex items-center justify-between text-[11px]">' +
+                '<span class="text-slate-500 flex items-center gap-1"><i data-lucide="link" class="w-3.5 h-3.5"></i> Target</span>' +
+                '<span class="font-mono-code font-semibold text-slate-800 text-right break-all">' + escHtml(targetLine) + '</span>' +
+              '</div>' +
+              '<div class="flex items-center justify-between text-[11px]">' +
+                '<span class="text-slate-500 flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5"></i> Dibuat</span>' +
+                '<span class="font-medium text-slate-800">' + escHtml(createdDate) + '</span>' +
+              '</div>' +
+            '</div>' +
+            '<div class="flex gap-2 pt-2 border-t border-slate-100">' +
+              '<button onclick="event.stopPropagation(); openSettingsModal(\'' + escHtml(s.id) + '\')" class="flex-1 btn-primary px-3 py-2 rounded-lg text-[11px] font-semibold flex items-center justify-center gap-1.5">' +
+                '<i data-lucide="settings" class="w-3.5 h-3.5"></i> Gear Setting' +
+              '</button>' +
+              '<button onclick="event.stopPropagation(); verifySubdomain(\'' + escHtml(s.id) + '\')" class="dash-btn-secondary px-3 py-2 rounded-lg text-[11px] font-semibold flex items-center gap-1.5">' +
+                '<i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Verify' +
+              '</button>' +
+            '</div>' +
+          '</div>'
+        );
+      }
+
       return (
-        '<div onclick="openSubdomainDetail(\'' + escHtml(s.id) + '\')" class="dash-subdomain-card mb-2">' +
-          '<div class="flex items-start justify-between gap-3 mb-2">' +
+        '<div class="dash-subdomain-card mb-2 transition-all duration-300 ' + (isExpanded ? 'ring-2 ring-blue-500 bg-blue-50/20' : '') + '" onclick="toggleExpand(\'' + escHtml(s.id) + '\')">' +
+          '<div class="flex items-start justify-between gap-3">' +
             '<div class="flex items-center gap-1.5 flex-wrap">' +
               '<span class="dash-badge-type ' + typeClass + '">' + typeLabel + '</span>' +
               '<span class="dash-badge-type ' + statusClass + '">' + statusLabel + '</span>' +
+              '<span class="dash-badge-type ' + proxyCls + '">Proxy ' + proxyLabel + '</span>' +
             '</div>' +
-            '<span class="dash-badge-type ' + proxyCls + '">Proxy ' + proxyLabel + '</span>' +
+            '<i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform duration-300 ' + (isExpanded ? 'rotate-180' : '') + '"></i>' +
           '</div>' +
-          '<p class="font-mono-code text-sm font-bold text-slate-900 break-all mb-1">' + escHtml(s.full_subdomain) + '</p>' +
-          
-          '<div class="flex flex-col gap-1.5 mt-3 p-2.5 rounded-lg bg-slate-50 border border-slate-100">' +
-            '<div class="flex items-center justify-between text-[11px]">' +
-              '<span class="text-slate-500 flex items-center gap-1"><i data-lucide="link" class="w-3 h-3"></i> Target</span>' +
-              '<span class="font-mono-code font-semibold text-slate-800 truncate max-w-[180px]">' + escHtml(targetLine) + '</span>' +
-            '</div>' +
-            '<div class="flex items-center justify-between text-[11px]">' +
-              '<span class="text-slate-500 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> Dibuat</span>' +
-              '<span class="font-medium text-slate-800">' + escHtml(createdDate) + '</span>' +
-            '</div>' +
-          '</div>' +
+          '<p class="font-mono-code text-sm font-bold text-slate-900 break-all mt-2">' + escHtml(s.full_subdomain) + '</p>' +
+          accordionHtml +
         '</div>'
       );
     }).join('');
+
     if (window.lucide) window.lucide.createIcons();
   }
 
-  async function openSubdomainDetail(id) {
-    const panel = $('sd-detail-panel');
-    const overlay = $('sd-detail-overlay');
-    const body = $('sd-detail-body');
-    const title = $('sd-detail-title');
-    if (!panel || !overlay || !body) return;
+  async function openSettingsModal(id) {
+    const modal = $('settings-modal');
+    const body = $('settings-body');
+    const title = $('settings-title');
+    if (!modal || !body) return;
 
     title.textContent = 'Memuat...';
-    body.innerHTML = '<div class="space-y-2"><div class="skeleton h-20 rounded-xl"></div><div class="skeleton h-20 rounded-xl"></div></div>';
-    
-    panel.classList.add('is-open');
-    overlay.classList.remove('hidden');
+    body.innerHTML = '<div class="skeleton h-32 rounded-xl"></div>';
+    modal.classList.remove('hidden');
 
     try {
       const res = await apiFetch('/api/web/user/subdomains/' + encodeURIComponent(id));
       state.currentSubdomain = res.data;
       title.textContent = res.data.full_subdomain;
-      renderSubdomainDetail(res.data);
+      renderSettingsDetail(res.data);
     } catch (err) {
       body.innerHTML = '<div class="text-center text-xs text-red-500 p-4">' + escHtml(err.message) + '</div>';
     }
   }
 
-  function renderSubdomainDetail(s) {
-    const body = $('sd-detail-body');
+  function renderSettingsDetail(s) {
+    const body = $('settings-body');
     const isTermux = s.is_termux;
     const records = s.records || [];
 
@@ -381,7 +406,9 @@
               (isPrimary ? '<span class="dash-badge-type dash-badge-pending">Primary</span>' : '') +
             '</div>' +
             '<div class="flex items-center gap-1">' +
-              (!isPrimary ? '<button onclick="deleteDnsRecord(\'' + escHtml(s.id) + '\',\'' + escHtml(r.id) + '\')" class="dash-icon-btn dash-icon-btn-danger" title="Hapus"><i data-lucide="trash-2" class="w-3 h-3"></i></button>' : '') +
+              (!isPrimary
+                ? '<button onclick="deleteDnsRecord(\'' + escHtml(s.id) + '\',\'' + escHtml(r.id) + '\')" class="dash-icon-btn dash-icon-btn-danger" title="Hapus"><i data-lucide="trash-2" class="w-3 h-3"></i></button>'
+                : '') +
             '</div>' +
           '</div>' +
           '<p class="text-xs font-mono-code text-slate-900 break-all"><span class="text-slate-400">' + escHtml(r.name) + '</span> &rarr; ' + escHtml(r.content) + '</p>' +
@@ -393,97 +420,84 @@
       );
     }).join('');
 
-    const termuxSection = isTermux ? (
-      '<div class="border-t border-slate-200/60 pt-4 mt-4">' +
-        '<div class="flex items-center justify-between mb-2">' +
-          '<p class="text-xs font-bold text-slate-900">Installer Termux</p>' +
-          '<span class="dash-badge-type dash-badge-termux">Termux Only</span>' +
-        '</div>' +
-        '<div class="space-y-1.5">' +
-          '<button onclick="regenerateInstaller(\'' + escHtml(s.id) + '\')" class="w-full dash-btn-secondary px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 justify-center">' +
-            '<i data-lucide="refresh-cw" class="w-3 h-3"></i> Regenerate Installer URL' +
-          '</button>' +
-          '<div class="grid grid-cols-2 gap-1.5">' +
-            '<button onclick="copyInstallerUrl(\'' + escHtml(s.id) + '\')" class="dash-btn-secondary px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 justify-center">' +
-              '<i data-lucide="copy" class="w-3 h-3"></i> Copy URL' +
-            '</button>' +
-            '<button onclick="downloadInstaller(\'' + escHtml(s.id) + '\')" class="dash-btn-secondary px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 justify-center">' +
-              '<i data-lucide="download" class="w-3 h-3"></i> Download' +
-            '</button>' +
+    const termuxSection = isTermux
+      ? (
+        '<div class="border-t border-slate-200/60 pt-4 mt-4">' +
+          '<div class="flex items-center justify-between mb-2">' +
+            '<p class="text-xs font-bold text-slate-900">Installer Termux</p>' +
+            '<span class="dash-badge-type dash-badge-termux">Termux Only</span>' +
           '</div>' +
-        '</div>' +
-      '</div>'
-    ) : '';
+          '<div class="space-y-1.5">' +
+            '<button onclick="regenerateInstaller(\'' + escHtml(s.id) + '\')" class="w-full dash-btn-secondary px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 justify-center">' +
+              '<i data-lucide="refresh-cw" class="w-3 h-3"></i> Regenerate Installer URL' +
+            '</button>' +
+            '<div class="grid grid-cols-2 gap-1.5">' +
+              '<button onclick="copyInstallerUrl(\'' + escHtml(s.id) + '\')" class="dash-btn-secondary px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 justify-center">' +
+                '<i data-lucide="copy" class="w-3 h-3"></i> Copy URL' +
+              '</button>' +
+              '<button onclick="downloadInstaller(\'' + escHtml(s.id) + '\')" class="dash-btn-secondary px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 justify-center">' +
+                '<i data-lucide="download" class="w-3 h-3"></i> Download' +
+              '</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      )
+      : '';
 
-    const settingSection = isTermux ? (
-      '<div class="space-y-3">' +
-        '<div>' +
-          '<p class="dash-field-label">Subdomain</p>' +
-          '<p class="font-mono-code text-xs text-slate-900 break-all">' + escHtml(s.full_subdomain) + '</p>' +
-        '</div>' +
-        '<div class="grid grid-cols-2 gap-2">' +
+    const settingSection = isTermux
+      ? (
+        '<div class="space-y-3">' +
           '<div>' +
-            '<p class="dash-field-label">Port</p>' +
-            '<p class="font-mono-code text-xs text-slate-900">' + (s.service_port || 3000) + '</p>' +
+            '<p class="dash-field-label">Subdomain</p>' +
+            '<p class="font-mono-code text-xs text-slate-900 break-all">' + escHtml(s.full_subdomain) + '</p>' +
           '</div>' +
+          '<div class="grid grid-cols-2 gap-2">' +
+            '<div>' +
+              '<p class="dash-field-label">Port</p>' +
+              '<p class="font-mono-code text-xs text-slate-900">' + (s.service_port || 3000) + '</p>' +
+            '</div>' +
+            '<div>' +
+              '<p class="dash-field-label">Service</p>' +
+              '<p class="font-mono-code text-xs text-slate-900">' + (s.service_type || 'http') + '</p>' +
+            '</div>' +
+          '</div>' +
+          '<div class="p-2.5 rounded-lg bg-purple-50 border border-purple-200 text-[11px] text-purple-800">' +
+            'Subdomain Termux nggak bisa edit target/proxy. Hapus & bikin ulang kalau perlu ubah.' +
+          '</div>' +
+        '</div>'
+      )
+      : (
+        '<div class="space-y-3">' +
           '<div>' +
-            '<p class="dash-field-label">Service</p>' +
-            '<p class="font-mono-code text-xs text-slate-900">' + (s.service_type || 'http') + '</p>' +
+            '<label class="dash-field-label">Target</label>' +
+            '<input type="text" id="sd-edit-target" value="' + escHtml(s.target || '') + '" class="dash-field-input font-mono-code" />' +
           '</div>' +
-        '</div>' +
-        '<div class="p-2.5 rounded-lg bg-purple-50 border border-purple-200 text-[11px] text-purple-800">' +
-          'Subdomain Termux nggak bisa edit target/proxy. Hapus & bikin ulang kalau perlu ubah.' +
-        '</div>' +
-      '</div>'
-    ) : (
-      '<div class="space-y-3">' +
-        '<div>' +
-          '<label class="dash-field-label">Target</label>' +
-          '<input type="text" id="sd-edit-target" value="' + escHtml(s.target || '') + '" class="dash-field-input font-mono-code" />' +
-        '</div>' +
-        '<div class="grid grid-cols-2 gap-2">' +
-          '<div>' +
-            '<label class="dash-field-label">Tipe</label>' +
-            '<select id="sd-edit-type" class="dash-field-input">' +
-              '<option value="pages" ' + (s.type === 'pages' ? 'selected' : '') + '>Pages (CNAME)</option>' +
-              '<option value="ip" ' + (s.type === 'ip' ? 'selected' : '') + '>IP (A)</option>' +
-              '<option value="redirect" ' + (s.type === 'redirect' ? 'selected' : '') + '>Redirect</option>' +
-              '<option value="custom" ' + (s.type === 'custom' ? 'selected' : '') + '>Custom</option>' +
-            '</select>' +
+          '<div class="grid grid-cols-2 gap-2">' +
+            '<div>' +
+              '<label class="dash-field-label">Tipe</label>' +
+              '<select id="sd-edit-type" class="dash-field-input">' +
+                '<option value="pages" ' + (s.type === 'pages' ? 'selected' : '') + '>Pages (CNAME)</option>' +
+                '<option value="ip" ' + (s.type === 'ip' ? 'selected' : '') + '>IP (A)</option>' +
+                '<option value="redirect" ' + (s.type === 'redirect' ? 'selected' : '') + '>Redirect</option>' +
+              '</select>' +
+            '</div>' +
+            '<div>' +
+              '<label class="dash-field-label">Proxy</label>' +
+              '<select id="sd-edit-proxied" class="dash-field-input">' +
+                '<option value="0" ' + (!s.proxied ? 'selected' : '') + '>OFF</option>' +
+                '<option value="1" ' + (s.proxied ? 'selected' : '') + '>ON</option>' +
+              '</select>' +
+            '</div>' +
           '</div>' +
-          '<div>' +
-            '<label class="dash-field-label">Proxy</label>' +
-            '<select id="sd-edit-proxied" class="dash-field-input">' +
-              '<option value="0" ' + (!s.proxied ? 'selected' : '') + '>OFF</option>' +
-              '<option value="1" ' + (s.proxied ? 'selected' : '') + '>ON</option>' +
-            '</select>' +
-          '</div>' +
-        '</div>' +
-        '<div class="flex gap-2">' +
-          '<button onclick="applySubdomainEdit(\'' + escHtml(s.id) + '\')" class="btn-primary px-4 py-2 rounded-lg text-xs font-semibold">Apply Perubahan</button>' +
-          '<button onclick="verifySubdomain(\'' + escHtml(s.id) + '\')" class="dash-btn-secondary px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5">' +
-            '<i data-lucide="check-circle" class="w-3 h-3"></i> Verify' +
-          '</button>' +
-        '</div>' +
-      '</div>'
-    );
+          '<button onclick="applySubdomainEdit(\'' + escHtml(s.id) + '\')" class="w-full btn-primary px-4 py-2 rounded-lg text-xs font-semibold mt-2">Apply Perubahan</button>' +
+        '</div>'
+      );
 
     body.innerHTML = (
-      '<div class="space-y-3 mb-5">' +
-        '<div class="flex flex-wrap items-center gap-1.5">' +
-          '<span class="dash-badge-type ' + (isTermux ? 'dash-badge-termux' : 'dash-badge-pointing') + '">' + (isTermux ? 'Termux' : 'Pointing') + '</span>' +
-          '<span class="dash-badge-type ' + (s.verified ? 'dash-badge-active' : (s.status === 'blocked' ? 'dash-badge-blocked' : 'dash-badge-pending')) + '">' + (s.verified ? 'Active' : (s.status === 'blocked' ? 'Blocked' : 'Pending')) + '</span>' +
-          '<span class="dash-badge-type ' + (s.proxied ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600') + '">Proxy ' + (s.proxied ? 'ON' : 'OFF') + '</span>' +
-        '</div>' +
-        '<p class="font-mono-code text-sm font-bold text-slate-900 break-all">' + escHtml(s.full_subdomain) + '</p>' +
-        '<p class="text-[11px] text-slate-500">' + escHtml(isTermux ? 'Port ' + (s.service_port || 3000) + ' &middot; ' + (s.service_type || 'http') : '&rarr; ' + (s.target || '-')) + '</p>' +
-      '</div>' +
-
       '<div class="border-b border-slate-200/60 flex mb-4">' +
         '<button onclick="dashTab(\'setting\')" id="dtab-setting" class="dash-tab active flex-1">Setting</button>' +
         '<button onclick="dashTab(\'dns\')" id="dtab-dns" class="dash-tab flex-1">DNS Records</button>' +
       '</div>' +
-
       '<div id="dpanel-setting" class="space-y-3">' +
         settingSection +
         termuxSection +
@@ -493,7 +507,6 @@
           '</button>' +
         '</div>' +
       '</div>' +
-
       '<div id="dpanel-dns" class="hidden space-y-2">' +
         '<div class="flex items-center justify-between mb-2">' +
           '<p class="text-xs font-bold text-slate-900">DNS Records <span class="text-slate-400 font-normal">(' + records.length + ')</span></p>' +
@@ -504,7 +517,7 @@
         (recordsHtml || '<div class="text-center py-6"><p class="text-xs text-slate-400">Belum ada record tambahan.</p></div>') +
       '</div>'
     );
-    
+
     if (window.lucide) window.lucide.createIcons();
   }
 
@@ -521,13 +534,9 @@
     if (panel) panel.classList.remove('hidden');
   }
 
-  function closeSubdomainDetail() {
-    const panel = $('sd-detail-panel');
-    const overlay = $('sd-detail-overlay');
-    if (panel) panel.classList.remove('is-open');
-    setTimeout(function () {
-      if (overlay) overlay.classList.add('hidden');
-    }, 300);
+  function closeSettingsModal() {
+    const modal = $('settings-modal');
+    if (modal) modal.classList.add('hidden');
     state.currentSubdomain = null;
   }
 
@@ -535,9 +544,9 @@
     const target = $('sd-edit-target')?.value.trim();
     const type = $('sd-edit-type')?.value;
     const proxied = $('sd-edit-proxied')?.value === '1';
-    
+
     if (!target) return toast('Target wajib diisi', 'warning');
-    
+
     Utils.showLoading('Menyimpan perubahan...');
     try {
       await apiFetch('/api/web/user/subdomains/' + encodeURIComponent(id), {
@@ -546,7 +555,7 @@
       });
       toast('Perubahan tersimpan', 'success');
       await loadSubdomains();
-      openSubdomainDetail(id);
+      openSettingsModal(id);
     } catch (err) {
       toast(err.message, 'error');
     } finally {
@@ -565,7 +574,10 @@
         toast(d.reason || 'Belum terverifikasi — DNS belum propagasi', 'warning');
       }
       await loadSubdomains();
-      openSubdomainDetail(id);
+      const modal = $('settings-modal');
+      if (modal && !modal.classList.contains('hidden')) {
+        openSettingsModal(id);
+      }
     } catch (err) {
       toast(err.message, 'error');
     } finally {
@@ -578,12 +590,12 @@
     if (!s) return;
     const input = prompt('Ketik "' + s.subdomain + '" untuk konfirmasi hapus:');
     if (input !== s.subdomain) return toast('Konfirmasi salah', 'warning');
-    
+
     Utils.showLoading('Menghapus subdomain...');
     try {
       await apiFetch('/api/web/user/subdomains/' + encodeURIComponent(id), { method: 'DELETE' });
       toast('Subdomain dihapus', 'success');
-      closeSubdomainDetail();
+      closeSettingsModal();
       await loadSubdomains();
       await loadSubdomainsSummary();
     } catch (err) {
@@ -698,18 +710,18 @@
       const res = await apiFetch('/api/web/user/subdomains', { method: 'POST', body: body });
       toast('Subdomain ' + (res.data.full_subdomain || res.data.subdomain) + ' dibuat', 'success');
       closeCreateSubdomainModal();
-      
+
       if (state.user) {
         state.user.points = res.data.balance_after ?? state.user.points;
         renderUser();
       }
-      
+
       await loadSubdomains();
       await loadSubdomainsSummary();
-      
+
       if (kind === 'termux' && res.data.id) {
         setTimeout(function () {
-          openSubdomainDetail(res.data.id);
+          openSettingsModal(res.data.id);
         }, 400);
       }
     } catch (err) {
@@ -731,7 +743,7 @@
     state.currentDnsEdit = { subdomainId: subdomainId, record: record };
     const modal = $('dns-modal');
     if (!modal) return;
-    
+
     if ($('dns-modal-title')) $('dns-modal-title').textContent = record ? 'Edit DNS Record' : 'Tambah DNS Record';
     if ($('dns-type')) $('dns-type').value = record?.type || 'A';
     if ($('dns-name')) $('dns-name').value = record?.name || '@';
@@ -739,7 +751,7 @@
     if ($('dns-ttl')) $('dns-ttl').value = record?.ttl || 1;
     if ($('dns-proxied')) $('dns-proxied').value = record?.proxied ? '1' : '0';
     if ($('dns-priority')) $('dns-priority').value = '10';
-    
+
     toggleDnsPriority();
     modal.classList.remove('hidden');
   }
@@ -760,18 +772,18 @@
     if (!state.currentDnsEdit) return;
     const subdomainId = state.currentDnsEdit.subdomainId;
     const record = state.currentDnsEdit.record;
-    
+
     const type = $('dns-type')?.value;
     const name = ($('dns-name')?.value || '@').trim();
     let content = ($('dns-content')?.value || '').trim();
     const ttl = parseInt($('dns-ttl')?.value || '1');
     const proxied = $('dns-proxied')?.value === '1';
-    
+
     if (type === 'MX') {
       const prio = parseInt($('dns-priority')?.value || '10');
       content = prio + ' ' + content;
     }
-    
+
     if (!content) return toast('Content wajib', 'warning');
 
     Utils.showLoading('Menyimpan DNS...');
@@ -789,7 +801,10 @@
       }
       toast('DNS record tersimpan', 'success');
       closeDnsModal();
-      openSubdomainDetail(subdomainId);
+      const modal = $('settings-modal');
+      if (modal && !modal.classList.contains('hidden')) {
+        openSettingsModal(subdomainId);
+      }
     } catch (err) {
       toast(err.message, 'error');
     } finally {
@@ -799,12 +814,12 @@
 
   async function deleteDnsRecord(subdomainId, recordId) {
     if (!confirm('Hapus DNS record ini?')) return;
-    
+
     Utils.showLoading('Menghapus DNS...');
     try {
       await apiFetch('/api/web/user/subdomains/' + encodeURIComponent(subdomainId) + '/records/' + encodeURIComponent(recordId), { method: 'DELETE' });
       toast('DNS record dihapus', 'success');
-      openSubdomainDetail(subdomainId);
+      openSettingsModal(subdomainId);
     } catch (err) {
       toast(err.message, 'error');
     } finally {
@@ -815,18 +830,20 @@
   async function loadPoints() {
     const ledger = $('pt-ledger');
     if (ledger) {
-      ledger.innerHTML = '<div class="skeleton h-14 m-3 rounded-xl"></div><div class="skeleton h-14 m-3 rounded-xl"></div>';
+      ledger.innerHTML =
+        '<div class="skeleton h-14 m-3 rounded-xl"></div>' +
+        '<div class="skeleton h-14 m-3 rounded-xl"></div>';
     }
-    
+
     try {
       const res = await apiFetch('/api/web/user/points?limit=50');
       const data = res?.data || {};
       const summary = data.summary || {};
-      
+
       if ($('pt-balance')) $('pt-balance').textContent = fmtNum(summary.balance);
       if ($('pt-earned')) $('pt-earned').textContent = '+' + fmtNum(summary.total_earned);
       if ($('pt-spent')) $('pt-spent').textContent = '−' + fmtNum(summary.total_spent);
-      
+
       if (state.user) {
         state.user.points = summary.balance;
         renderUser();
@@ -837,7 +854,7 @@
         if (ledger) ledger.innerHTML = '<div class="p-8 text-center text-xs text-slate-400">Belum ada transaksi.</div>';
         return;
       }
-      
+
       if (ledger) {
         ledger.innerHTML = txs.map(function (t) {
           const isPlus = t.delta > 0;
@@ -896,7 +913,7 @@
     const list = $('ac-sessions-list');
     if (!list) return;
     list.innerHTML = '<div class="skeleton h-14 rounded-xl"></div>';
-    
+
     try {
       const res = await apiFetch('/api/web/user/sessions');
       const sessions = res?.data?.sessions || [];
@@ -904,7 +921,7 @@
         list.innerHTML = '<p class="text-xs text-slate-400">Tidak ada sesi.</p>';
         return;
       }
-      
+
       list.innerHTML = sessions.map(function (s) {
         const isCurrent = s.id === state.sessionId || s.is_current;
         return (
@@ -949,7 +966,7 @@
   async function saveProfile() {
     const name = $('ac-display-name')?.value.trim();
     if (!name) return toast('Nama wajib', 'warning');
-    
+
     Utils.showLoading('Menyimpan...');
     try {
       await apiFetch('/api/web/user/profile', { method: 'PATCH', body: { display_name: name } });
@@ -967,7 +984,7 @@
     const oldPwd = $('ac-old-pwd')?.value;
     const newPwd = $('ac-new-pwd')?.value;
     if (!oldPwd || !newPwd) return toast('Isi kedua password', 'warning');
-    
+
     Utils.showLoading('Mengubah password...');
     try {
       await apiFetch('/api/web/user/change-password', { method: 'POST', body: { old_password: oldPwd, new_password: newPwd } });
@@ -985,7 +1002,7 @@
     const pwd = $('ac-delete-pwd')?.value;
     if (!pwd) return toast('Password wajib', 'warning');
     if (!confirm('Akun dan semua data akan dihapus permanen. Lanjut?')) return;
-    
+
     Utils.showLoading('Menghapus akun...');
     try {
       await apiFetch('/api/web/user/delete-account', { method: 'POST', body: { password: pwd } });
@@ -1014,7 +1031,7 @@
     const oldPwd = $('pwd-old')?.value;
     const newPwd = $('pwd-new')?.value;
     if (!oldPwd || !newPwd) return toast('Isi kedua password', 'warning');
-    
+
     Utils.showLoading('Mengubah password...');
     try {
       await apiFetch('/api/web/user/change-password', { method: 'POST', body: { old_password: oldPwd, new_password: newPwd } });
@@ -1062,7 +1079,7 @@
 
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
-        closeSubdomainDetail();
+        closeSettingsModal();
         closeCreateSubdomainModal();
         closeDnsModal();
         closePwdModal();
@@ -1077,14 +1094,14 @@
     }
     if (window.lucide) window.lucide.createIcons();
     bindEvents();
-    
+
     const ok = await loadUser();
     if (!ok) return;
-    
+
     await loadOverview();
     if (state.initialized) return;
     state.initialized = true;
-    
+
     const hashView = (window.location.hash || '').replace('#', '');
     if (hashView && $('view-' + hashView)) {
       switchView(hashView);
@@ -1094,8 +1111,8 @@
   window.Dashboard = {
     switchView: switchView,
     toggleSidebar: toggleSidebar,
-    openSubdomainDetail: openSubdomainDetail,
-    closeSubdomainDetail: closeSubdomainDetail,
+    openSettingsModal: openSettingsModal,
+    closeSettingsModal: closeSettingsModal,
     applySubdomainEdit: applySubdomainEdit,
     verifySubdomain: verifySubdomain,
     deleteSubdomain: deleteSubdomain,
@@ -1106,6 +1123,7 @@
     closeCreateSubdomainModal: closeCreateSubdomainModal,
     switchCreateTab: switchCreateTab,
     filterSubdomains: filterSubdomains,
+    toggleExpand: toggleExpand,
     dashTab: dashTab,
     openDnsModal: openDnsModal,
     closeDnsModal: closeDnsModal,
@@ -1121,8 +1139,8 @@
 
   window.toggleSidebar = toggleSidebar;
   window.switchView = switchView;
-  window.openSubdomainDetail = openSubdomainDetail;
-  window.closeSubdomainDetail = closeSubdomainDetail;
+  window.openSettingsModal = openSettingsModal;
+  window.closeSettingsModal = closeSettingsModal;
   window.applySubdomainEdit = applySubdomainEdit;
   window.verifySubdomain = verifySubdomain;
   window.deleteSubdomain = deleteSubdomain;
@@ -1133,6 +1151,7 @@
   window.closeCreateSubdomainModal = closeCreateSubdomainModal;
   window.switchCreateTab = switchCreateTab;
   window.filterSubdomains = filterSubdomains;
+  window.toggleExpand = toggleExpand;
   window.dashTab = dashTab;
   window.openDnsModal = openDnsModal;
   window.closeDnsModal = closeDnsModal;
