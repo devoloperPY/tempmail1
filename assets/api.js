@@ -42,9 +42,6 @@ function getCurrentUser() {
   }
 }
 
-/**
- * Menampilkan modal peringatan apabila IP/Akun terkena Ban (403)
- */
 function showBannedModal(reason) {
   let modal = document.getElementById('banned-alert-modal');
   if (!modal) {
@@ -66,11 +63,6 @@ function showBannedModal(reason) {
   `;
 }
 
-/**
- * Wrapper utama Fetch ke CF Worker
- * @param {string} endpoint - contoh: '/api/web/stats'
- * @param {object} options - opsi fetch + flag { skipAuthRedirect: boolean }
- */
 async function apiFetch(endpoint, options = {}) {
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
   const headers = {
@@ -103,13 +95,16 @@ async function apiFetch(endpoint, options = {}) {
       payload = { success: response.ok, error: text || response.statusText };
     }
 
-    // Handle HTTP Error Codes
     if (!response.ok || (payload && payload.success === false)) {
       const errMsg = (payload && (payload.error || payload.message)) || `Terjadi kesalahan (${response.status})`;
 
+      const isMeEndpoint = url.includes('/api/web/auth/me');
+
       if (response.status === 401) {
-        clearToken();
-        if (!options.skipAuthRedirect) {
+        if (!isMeEndpoint) {
+          clearToken();
+        }
+        if (!options.skipAuthRedirect && !isMeEndpoint) {
           const path = window.location.pathname;
           if (!path.includes('login') && !path.includes('register') && !path.includes('verify')) {
             Utils.showToast('Sesi Anda telah berakhir. Silakan login kembali.', 'warning');
@@ -137,7 +132,6 @@ async function apiFetch(endpoint, options = {}) {
     return payload;
   } catch (err) {
     if (!err.status) {
-      // Network / CORS error
       err.message = err.message || 'Gagal terhubung ke server API.';
     }
     throw err;
