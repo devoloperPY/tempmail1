@@ -895,37 +895,47 @@
     window.open(url, '_blank', 'noopener');
   }
 
-  function handleClearCache() {
-    if (!confirm('Bersihkan cache dan muat ulang halaman? Sesi login tetap aman.')) return;
+function handleClearCache() {
+  if (!confirm('Bersihkan cache dan muat ulang halaman? Sesi login tetap aman.')) return;
 
-    try {
-      if (window.caches) {
-        caches.keys().then(function (names) {
-          return Promise.all(names.map(function (name) {
-            return caches.delete(name);
-          }));
-        });
-      }
+  const btn = document.querySelector('.dash-clear-cache');
+  if (btn) {
+    btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> <span>Membersihkan...</span>';
+    if (window.lucide) window.lucide.createIcons();
+  }
 
-      const token = getToken();
-      const user = getCurrentUser();
-      const mailboxId = localStorage.getItem(STORAGE_KEYS.MAILBOX_ID);
+  try {
+    if (window.caches) {
+      caches.keys().then(function (names) {
+        return Promise.all(names.map(function (name) {
+          return caches.delete(name);
+        }));
+      });
+    }
 
-      localStorage.clear();
-      sessionStorage.clear();
+    const token = getToken();
+    const user = getCurrentUser();
+    const mailboxId = localStorage.getItem(STORAGE_KEYS.MAILBOX_ID);
 
-      if (token) localStorage.setItem(STORAGE_KEYS.TOKEN, token);
-      if (user) localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
-      if (mailboxId) localStorage.setItem(STORAGE_KEYS.MAILBOX_ID, mailboxId);
+    localStorage.clear();
+    sessionStorage.clear();
 
-      toast('Cache dibersihkan. Memuat ulang...', 'success');
-      setTimeout(function () {
-        window.location.reload(true);
-      }, 500);
-    } catch (e) {
-      toast('Gagal membersihkan cache: ' + e.message, 'error');
+    if (token) localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+    if (user) localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+    if (mailboxId) localStorage.setItem(STORAGE_KEYS.MAILBOX_ID, mailboxId);
+
+    toast('Cache dibersihkan. Memuat ulang...', 'success');
+    setTimeout(function () {
+      window.location.reload(true);
+    }, 800);
+  } catch (e) {
+    toast('Gagal membersihkan cache: ' + e.message, 'error');
+    if (btn) {
+      btn.innerHTML = '<i data-lucide="trash-2" class="w-4 h-4"></i> <span>Bersihkan Cache</span>';
+      if (window.lucide) window.lucide.createIcons();
     }
   }
+}
 
   function renderAccount() {
     renderUser();
