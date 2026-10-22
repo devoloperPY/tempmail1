@@ -13,7 +13,8 @@
     currentUserPoints: 0,
     visitors: [],
     configs: {},
-    initialized: false
+    initialized: false,
+    bootstrapped: false
   };
 
   const ROLE_ALLOWED = ['admin', 'owner'];
@@ -160,28 +161,63 @@
     if (m) m.classList.add('hidden');
   }
 
+  function delay(ms) {
+    return new Promise(function (r) { setTimeout(r, ms); });
+  }
+
+  async function tryFetchMe() {
+    return await apiFetch('/api/web/auth/me', { skipAuthRedirect: true });
+  }
+
   async function guardRole() {
+    const token = getToken();
+    if (!token) {
+      window.location.replace('login.html');
+      return false;
+    }
+
+    let res = null;
+    let err = null;
+
     try {
-      const res = await apiFetch('/api/web/auth/me');
-      const user = res?.data?.user;
-      if (!user) {
-        window.location.replace('login.html');
-        return false;
+      res = await tryFetchMe();
+    } catch (e) {
+      err = e;
+    }
+
+    if (!res?.data?.user || err) {
+      const retryToken = getToken();
+      if (retryToken) {
+        await delay(600);
+        try {
+          res = await tryFetchMe();
+          err = null;
+        } catch (e2) {
+          err = e2;
+        }
       }
-      if (!ROLE_ALLOWED.includes(user.role)) {
-        window.location.replace('404.html');
-        return false;
-      }
-      state.user = user;
-      setToken(getToken(), user);
-      if ($('admin-avatar')) $('admin-avatar').textContent = (user.display_name || user.email).charAt(0).toUpperCase();
-      if ($('admin-name')) $('admin-name').textContent = user.display_name || user.email.split('@')[0];
-      if ($('admin-email')) $('admin-email').textContent = user.email;
-      return true;
-    } catch (err) {
+    }
+
+    if (!res?.data?.user) {
+      clearToken();
+      window.location.replace('login.html');
+      return false;
+    }
+
+    const user = res.data.user;
+    if (!ROLE_ALLOWED.includes(user.role)) {
       window.location.replace('404.html');
       return false;
     }
+
+    state.user = user;
+    setToken(getToken(), user);
+
+    if ($('admin-avatar')) $('admin-avatar').textContent = (user.display_name || user.email).charAt(0).toUpperCase();
+    if ($('admin-name')) $('admin-name').textContent = user.display_name || user.email.split('@')[0];
+    if ($('admin-email')) $('admin-email').textContent = user.email;
+
+    return true;
   }
 
   async function loadOverview() {
