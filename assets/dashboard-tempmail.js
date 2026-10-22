@@ -3,12 +3,23 @@
 
   let currentMailboxId = null;
   let currentMailboxEmail = '';
-  let currentMailboxCreatedAt = 0;
   let countdownInstance = null;
   let lastOpenedMessageBody = '';
   let initialized = false;
 
-  function $(id) { return document.getElementById(id); }
+  function $(id) {
+    return document.getElementById(id);
+  }
+
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
 
   function stripHtml(html) {
     if (!html) return '';
@@ -35,25 +46,38 @@
     if (!content) return '';
     let text = String(content);
     text = text.replace(/=\r?\n/g, '');
-    text = text.replace(/=([0-9A-F]{2})/gi, (_, hex) => {
-      try { return String.fromCharCode(parseInt(hex, 16)); } catch { return _; }
+    text = text.replace(/=([0-9A-F]{2})/gi, function (_, hex) {
+      try {
+        return String.fromCharCode(parseInt(hex, 16));
+      } catch (e) {
+        return _;
+      }
     });
-    text = text.replace(/=\?[^?]+\?[BQbq]\?[^?]+\?=/g, (match) => {
+    text = text.replace(/=\?[^?]+\?[BQbq]\?[^?]+\?=/g, function (match) {
       try {
         const parts = match.match(/=\?([^?]+)\?([BQbq])\?([^?]+)\?=/);
         if (!parts) return match;
-        const [, , encoding, data] = parts;
+        const encoding = parts[2];
+        const data = parts[3];
         if (encoding.toUpperCase() === 'B') {
           const binary = atob(data);
           const bytes = new Uint8Array(binary.length);
-          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+          }
           return new TextDecoder('utf-8').decode(bytes);
         } else {
-          return data.replace(/_/g, ' ').replace(/=([0-9A-F]{2})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
+          return data.replace(/_/g, ' ').replace(/=([0-9A-F]{2})/gi, function (_, h) {
+            return String.fromCharCode(parseInt(h, 16));
+          });
         }
-      } catch { return match; }
+      } catch (e) {
+        return match;
+      }
     });
-    if (/<[a-z][\s\S]*>/i.test(text)) text = stripHtml(text);
+    if (/<[a-z][\s\S]*>/i.test(text)) {
+      text = stripHtml(text);
+    }
     text = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
     return text;
   }
@@ -66,8 +90,8 @@
       /(\d{4,8})\s*(?:adalah|is)\s*(?:kode|code|otp)/i,
       /\b(\d{6})\b/
     ];
-    for (const p of patterns) {
-      const m = cleaned.match(p);
+    for (let i = 0; i < patterns.length; i++) {
+      const m = cleaned.match(patterns[i]);
       if (m && m[1]) return m[1];
     }
     return null;
@@ -78,26 +102,125 @@
     const urlRegex = /https?:\/\/[^\s<>"')]+/gi;
     const matches = String(text).match(urlRegex) || [];
     const cleanUrls = matches
-      .map(u => u.replace(/[.,;:!?]+$/, ''))
-      .filter(u => !u.includes('unsubscribe') && !u.includes('tracking'))
-      .filter((u, i, arr) => arr.indexOf(u) === i);
+      .map(function (u) { return u.replace(/[.,;:!?]+$/, ''); })
+      .filter(function (u) { return !u.includes('unsubscribe') && !u.includes('tracking'); })
+      .filter(function (u, i, arr) { return arr.indexOf(u) === i; });
     return cleanUrls.slice(0, 5);
   }
 
-  function showGenerateState() {
-    if (countdownInstance) { countdownInstance.stop(); countdownInstance = null; }
-    currentMailboxId = null;
-    currentMailboxEmail = '';
+  async function fetchUserTier() {
+    try {
+      const res = await apiFetch('/api/web/auth/me');
+      return res?.data?.user?.tier || 'free';
+    } catch (e) {
+      return 'free';
+    }
   }
 
-  async function loadQuota(silent = false) {
+  async function updateStatusBar() {
+    const statusBar = $('tm-status-bar');
+    if (!statusBar) return;
+
     try {
-      const res = await apiFetch('/api/web/user/quota');
-      const q = res?.data || {};
-      if (silent) return q;
-      return q;
-    } catch {
-      return null;
+      const [quotaRes, tier] = await Promise.all([
+        apiFetch('/api/web/user/quota').catch(function () { return null; }),
+        fetchUserTier()
+      ]);
+
+      const q = quotaRes?.data || {};
+      const used = q.used_today || 0;
+      const max = q.max_per_day || 10;
+      const isPremium = tier === 'premium';
+
+      statusBar.innerHTML =
+        '<div class="tm-status-item">' +
+          '<i data-lucide="inbox" class="w-3 h-3 text-blue-600"></i>' +
+          'Kuota: ' + used + ' / ' + max +
+        '</div>' +
+        '<div class="tm-status-item">' +
+          '<i data-lucide="crown" class="w-3 h-3 ' + (isPremium ? 'text-amber-500' : 'text-slate-400') + '"></i>' +
+          'Akun: ' + (isPremium ? 'Premium' : 'Free') +
+        '</div>' +
+        '<div class="tm-status-item">' +
+          '<i data-lucide="clock" class="w-3 h-3 text-emerald-600"></i>' +
+          'Durasi: ' + (q.mailbox_duration_minutes || 300) + ' mnt' +
+        '</div>';
+
+      if (window.lucide) window.lucide.createIcons();
+    } catch (e) {
+      statusBar.innerHTML = '<div class="tm-status-item">Gagal memuat status.</div>';
+    }
+  }
+
+  function renderMailboxList(mailboxes) {
+    const list = $('tm-mailboxes-list');
+    if (!list) return;
+
+    if (!mailboxes || !mailboxes.length) {
+      list.innerHTML =
+        '<div class="p-6 text-center text-xs text-slate-400">' +
+          'Belum ada mailbox. Buat di atas.' +
+        '</div>';
+      return;
+    }
+
+    const html = mailboxes.map(function (m) {
+      const isSelected = currentMailboxId === m.id;
+      const expiresText = m.expires_at ? Utils.formatRelative(m.expires_at) : '-';
+      const msgCount = m.message_count || 0;
+      const premiumBadge = m.is_premium ? '<span class="dash-badge-type dash-badge-termux ml-1">PRO</span>' : '';
+
+      return (
+        '<div data-mb-id="' + escapeHtml(m.id) + '" data-mb-email="' + escapeHtml(m.email) + '" class="tm-mb-item p-2.5 rounded-lg border cursor-pointer transition ' +
+          (isSelected ? 'bg-blue-50 border-blue-400' : 'bg-white border-slate-200 hover:border-blue-300') + '">' +
+          '<div class="flex items-center justify-between gap-2">' +
+            '<p class="font-mono-code text-[11px] font-bold text-slate-900 truncate">' + escapeHtml(m.email) + premiumBadge + '</p>' +
+            '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">' + msgCount + '</span>' +
+          '</div>' +
+          '<p class="text-[10px] text-slate-500 mt-1 flex items-center gap-1">' +
+            '<i data-lucide="clock" class="w-2.5 h-2.5"></i>' +
+            escapeHtml(expiresText) +
+          '</p>' +
+        '</div>'
+      );
+    }).join('');
+
+    list.innerHTML = html;
+
+    list.querySelectorAll('.tm-mb-item').forEach(function (el) {
+      el.addEventListener('click', function () {
+        currentMailboxId = el.getAttribute('data-mb-id');
+        currentMailboxEmail = el.getAttribute('data-mb-email');
+        fetchInboxMessages(true);
+        closeReader();
+        renderMailboxList(currentMailboxesCache);
+      });
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  let currentMailboxesCache = [];
+
+  async function loadMailboxes() {
+    const list = $('tm-mailboxes-list');
+    if (list) {
+      list.innerHTML =
+        '<div class="p-2 space-y-2">' +
+          '<div class="skeleton h-14 w-full"></div>' +
+          '<div class="skeleton h-14 w-full"></div>' +
+        '</div>';
+    }
+
+    try {
+      const res = await apiFetch('/api/web/user/my-mailboxes');
+      const mailboxes = res?.data?.mailboxes || [];
+      currentMailboxesCache = mailboxes;
+      renderMailboxList(mailboxes);
+    } catch (err) {
+      if (list) {
+        list.innerHTML = '<div class="p-4 text-center text-xs text-red-500">' + escapeHtml(err.message) + '</div>';
+      }
     }
   }
 
@@ -106,18 +229,33 @@
       window.location.replace('login.html');
       return;
     }
+
     Utils.showLoading('Membuat alamat email sementara...');
+
     try {
       const body = {};
       if (prefix) body.prefix = prefix;
-      const res = await apiFetch('/api/web/mailbox/create', { method: 'POST', body });
+
+      const res = await apiFetch('/api/web/mailbox/create', {
+        method: 'POST',
+        body: body
+      });
+
       const data = res.data;
       currentMailboxId = data.id;
       currentMailboxEmail = data.email;
-      currentMailboxCreatedAt = data.created_at;
-      Utils.showToast(`Mailbox ${data.email} berhasil dibuat!`, 'success');
-      activateMailboxUI(data);
-      if (window.Dashboard && window.Dashboard.refreshSidebarBadges) window.Dashboard.refreshSidebarBadges();
+
+      Utils.showToast('Mailbox ' + data.email + ' berhasil dibuat!', 'success');
+
+      currentMailboxesCache.unshift(data);
+      renderMailboxList(currentMailboxesCache);
+
+      fetchInboxMessages(true);
+      updateStatusBar();
+
+      if (window.Dashboard && window.Dashboard.refreshSidebarBadges) {
+        window.Dashboard.refreshSidebarBadges();
+      }
     } catch (err) {
       Utils.showToast(err.message || 'Gagal membuat temp mail.', 'error');
     } finally {
@@ -125,100 +263,140 @@
     }
   }
 
-  function activateMailboxUI(data) {
-    if (currentMailboxId && data.id) currentMailboxId = data.id;
-    if (data.email) currentMailboxEmail = data.email;
-    const prefixInput = $('tm-custom-prefix');
-    if (prefixInput) prefixInput.value = '';
-    fetchInboxMessages(true);
-  }
-
-  async function fetchInboxMessages(showSkeleton = false) {
+  async function fetchInboxMessages(showSkeleton) {
     if (!currentMailboxId) return;
+
     const refreshIcon = $('tm-btn-refresh-inbox')?.querySelector('i');
     if (refreshIcon) refreshIcon.classList.add('animate-spin');
+
     const list = $('tm-messages-list');
+
     if (showSkeleton && list) {
-      list.innerHTML = '<div class="p-3 space-y-2"><div class="skeleton h-12 w-full"></div><div class="skeleton h-12 w-full"></div><div class="skeleton h-12 w-full"></div></div>';
+      list.innerHTML =
+        '<div class="p-3 space-y-2">' +
+          '<div class="skeleton h-12 w-full"></div>' +
+          '<div class="skeleton h-12 w-full"></div>' +
+          '<div class="skeleton h-12 w-full"></div>' +
+        '</div>';
     }
+
     try {
-      const res = await apiFetch(`/api/web/mailbox/${encodeURIComponent(currentMailboxId)}/messages`);
+      const res = await apiFetch('/api/web/mailbox/' + encodeURIComponent(currentMailboxId) + '/messages');
       const messages = res?.data?.messages || [];
       const total = res?.data?.total ?? messages.length;
+
       const countEl = $('tm-inbox-count');
-      if (countEl) countEl.textContent = `${total} pesan`;
+      if (countEl) countEl.textContent = total + ' pesan';
+
       if (!messages.length) {
-        if (list) list.innerHTML = '<div class="p-8 text-center text-xs text-slate-400 flex flex-col items-center gap-2"><i data-lucide="inbox" class="w-8 h-8 text-slate-300"></i><p>Belum ada pesan masuk</p></div>';
+        if (list) {
+          list.innerHTML =
+            '<div class="p-8 text-center text-xs text-slate-400 flex flex-col items-center gap-2">' +
+              '<i data-lucide="inbox" class="w-8 h-8 text-slate-300"></i>' +
+              '<p>Belum ada pesan masuk</p>' +
+            '</div>';
+        }
         if (window.lucide) window.lucide.createIcons();
         return;
       }
+
       if (list) {
-        list.innerHTML = messages.map(m => `
-          <div data-msg-id="${Utils.escapeHtml(m.id)}" class="tm-msg-row p-3 cursor-pointer transition flex items-start gap-2.5 hover:bg-blue-50/60 border-l-2 border-transparent">
-            <div class="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
-              ${Utils.escapeHtml((m.sender || 'M')[0].toUpperCase())}
-            </div>
-            <div class="min-w-0 flex-1">
-              <p class="text-xs font-bold text-slate-900 truncate">${Utils.escapeHtml(m.subject || '(Tanpa Subjek)')}</p>
-              <p class="text-[10px] text-slate-500 truncate mt-0.5">${Utils.escapeHtml(m.sender || '-')}</p>
-              <p class="text-[10px] text-slate-400 mt-0.5">${Utils.formatRelative(m.received_at)}</p>
-            </div>
-          </div>
-        `).join('');
-        list.querySelectorAll('.tm-msg-row').forEach(row => {
-          row.addEventListener('click', () => openMessage(row.getAttribute('data-msg-id')));
+        list.innerHTML = messages.map(function (m) {
+          const senderInitial = (m.sender || 'M')[0].toUpperCase();
+          return (
+            '<div data-msg-id="' + escapeHtml(m.id) + '" class="tm-msg-row p-3 cursor-pointer transition flex items-start gap-2.5 hover:bg-blue-50/60 border-l-2 border-transparent">' +
+              '<div class="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">' +
+                escapeHtml(senderInitial) +
+              '</div>' +
+              '<div class="min-w-0 flex-1">' +
+                '<p class="text-xs font-bold text-slate-900 truncate">' + escapeHtml(m.subject || '(Tanpa Subjek)') + '</p>' +
+                '<p class="text-[10px] text-slate-500 truncate mt-0.5">' + escapeHtml(m.sender || '-') + '</p>' +
+                '<p class="text-[10px] text-slate-400 mt-0.5">' + Utils.formatRelative(m.received_at) + '</p>' +
+              '</div>' +
+            '</div>'
+          );
+        }).join('');
+
+        list.querySelectorAll('.tm-msg-row').forEach(function (row) {
+          row.addEventListener('click', function () {
+            openMessage(row.getAttribute('data-msg-id'));
+          });
         });
+
         if (window.lucide) window.lucide.createIcons();
       }
     } catch (err) {
-      if (list) list.innerHTML = `<div class="p-6 text-center text-xs text-red-500">${Utils.escapeHtml(err.message || 'Gagal memuat pesan')}</div>`;
+      if (list) {
+        list.innerHTML = '<div class="p-6 text-center text-xs text-red-500">' + escapeHtml(err.message || 'Gagal memuat pesan') + '</div>';
+      }
     } finally {
-      if (refreshIcon) setTimeout(() => refreshIcon.classList.remove('animate-spin'), 600);
+      if (refreshIcon) {
+        setTimeout(function () {
+          refreshIcon.classList.remove('animate-spin');
+        }, 600);
+      }
     }
   }
 
   async function openMessage(msgId) {
     if (!msgId) return;
+
     Utils.showLoading('Membuka pesan...');
+
     try {
-      const res = await apiFetch(`/api/web/message/${encodeURIComponent(msgId)}`);
+      const res = await apiFetch('/api/web/message/' + encodeURIComponent(msgId));
       const msg = res.data;
+
       const emptyEl = $('tm-reader-empty');
       const panelEl = $('tm-reader-panel');
       if (emptyEl) emptyEl.classList.add('hidden');
       if (panelEl) panelEl.classList.remove('hidden');
+
       $('tm-reader-subject').textContent = msg.subject || '(Tanpa Subjek)';
       $('tm-reader-sender').textContent = msg.sender || '-';
       $('tm-reader-date').textContent = Utils.formatDate(msg.received_at);
+
       const body = msg.body || msg.body_html || '';
       let displayBody = body;
+
       if (msg.body_html && (!body || body.length < 20)) {
         displayBody = stripHtml(msg.body_html);
       } else {
         displayBody = decodeMimeContent(body);
       }
+
       lastOpenedMessageBody = displayBody;
       $('tm-reader-body').textContent = displayBody;
+
       const otp = extractOtp(displayBody);
       const otpBox = $('tm-reader-otp-box');
+
       if (otp) {
         $('tm-reader-otp-code').textContent = otp;
         otpBox.classList.remove('hidden');
       } else {
         otpBox.classList.add('hidden');
       }
+
       const links = extractLinks(body + ' ' + (msg.body_html || ''));
       const linksBox = $('tm-reader-links-box');
       const linksList = $('tm-reader-links-list');
+
       if (links.length > 0) {
         linksBox.classList.remove('hidden');
-        linksList.innerHTML = links.map(url => {
+        linksList.innerHTML = links.map(function (url) {
           const shortUrl = url.length > 40 ? url.slice(0, 40) + '...' : url;
-          return `<a href="${Utils.escapeHtml(url)}" target="_blank" rel="noopener" class="px-2 py-1 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-medium border border-blue-200 truncate max-w-full inline-flex items-center gap-1"><i data-lucide="external-link" class="w-2.5 h-2.5 shrink-0"></i><span class="truncate">${Utils.escapeHtml(shortUrl)}</span></a>`;
+          return (
+            '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" class="px-2 py-1 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 text-[10px] font-medium border border-blue-200 truncate max-w-full inline-flex items-center gap-1">' +
+              '<i data-lucide="external-link" class="w-2.5 h-2.5 shrink-0"></i>' +
+              '<span class="truncate">' + escapeHtml(shortUrl) + '</span>' +
+            '</a>'
+          );
         }).join('');
       } else {
         linksBox.classList.add('hidden');
       }
+
       if (window.lucide) window.lucide.createIcons();
     } catch (err) {
       Utils.showToast(err.message || 'Gagal memuat pesan.', 'error');
@@ -235,53 +413,11 @@
     lastOpenedMessageBody = '';
   }
 
-  async function loadMailboxes(silent = false) {
-    const list = $('tm-mailboxes-list');
-    if (!list) return;
-    if (!silent) list.innerHTML = '<div class="p-2 space-y-2"><div class="skeleton h-14 w-full"></div><div class="skeleton h-14 w-full"></div></div>';
-    try {
-      const res = await apiFetch('/api/web/user/my-mailboxes');
-      const mailboxes = res?.data?.mailboxes || [];
-      if (!mailboxes.length) {
-        list.innerHTML = '<div class="p-6 text-center text-xs text-slate-400">Belum ada mailbox. Buat di atas.</div>';
-        return;
-      }
-      list.innerHTML = mailboxes.map(m => {
-        const isSelected = currentMailboxId === m.id;
-        const expiresIn = Math.max(0, m.expires_at - Math.floor(Date.now() / 1000));
-        return `
-          <div data-mb-id="${Utils.escapeHtml(m.id)}" data-mb-email="${Utils.escapeHtml(m.email)}" class="tm-mb-item p-2.5 rounded-lg border cursor-pointer transition ${isSelected ? 'bg-blue-50 border-blue-400' : 'bg-white border-slate-200 hover:border-blue-300'}">
-            <div class="flex items-center justify-between gap-2">
-              <p class="font-mono-code text-[11px] font-bold text-slate-900 truncate">${Utils.escapeHtml(m.email)}</p>
-              <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">${m.message_count || 0}</span>
-            </div>
-            <p class="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
-              <i data-lucide="clock" class="w-2.5 h-2.5"></i>
-              ${Utils.formatRelative(m.expires_at)}
-            </p>
-          </div>
-        `;
-      }).join('');
-      list.querySelectorAll('.tm-mb-item').forEach(el => {
-        el.addEventListener('click', () => {
-          currentMailboxId = el.getAttribute('data-mb-id');
-          currentMailboxEmail = el.getAttribute('data-mb-email');
-          loadMailboxes(true);
-          fetchInboxMessages(true);
-          closeReader();
-        });
-      });
-      if (window.lucide) window.lucide.createIcons();
-    } catch (err) {
-      list.innerHTML = `<div class="p-4 text-center text-xs text-red-500">${Utils.escapeHtml(err.message)}</div>`;
-    }
-  }
-
   function bindEvents() {
     const createForm = $('tm-create-form');
     if (createForm && !createForm.dataset.bound) {
       createForm.dataset.bound = '1';
-      createForm.addEventListener('submit', (e) => {
+      createForm.addEventListener('submit', function (e) {
         e.preventDefault();
         const prefix = $('tm-custom-prefix')?.value.trim() || '';
         handleCreateMailbox(prefix);
@@ -291,7 +427,7 @@
     const btnNew = $('tm-btn-new-mailbox');
     if (btnNew && !btnNew.dataset.bound) {
       btnNew.dataset.bound = '1';
-      btnNew.addEventListener('click', () => {
+      btnNew.addEventListener('click', function () {
         currentMailboxId = null;
         currentMailboxEmail = '';
         loadMailboxes();
@@ -304,13 +440,18 @@
     const btnRefreshMbs = $('tm-btn-refresh-mailboxes');
     if (btnRefreshMbs && !btnRefreshMbs.dataset.bound) {
       btnRefreshMbs.dataset.bound = '1';
-      btnRefreshMbs.addEventListener('click', () => loadMailboxes());
+      btnRefreshMbs.addEventListener('click', function () {
+        loadMailboxes();
+        updateStatusBar();
+      });
     }
 
     const btnRefreshInbox = $('tm-btn-refresh-inbox');
     if (btnRefreshInbox && !btnRefreshInbox.dataset.bound) {
       btnRefreshInbox.dataset.bound = '1';
-      btnRefreshInbox.addEventListener('click', () => fetchInboxMessages(false));
+      btnRefreshInbox.addEventListener('click', function () {
+        fetchInboxMessages(false);
+      });
     }
 
     const btnCloseReader = $('tm-btn-reader-close');
@@ -322,17 +463,21 @@
     const btnCopyBody = $('tm-btn-reader-copy');
     if (btnCopyBody && !btnCopyBody.dataset.bound) {
       btnCopyBody.dataset.bound = '1';
-      btnCopyBody.addEventListener('click', () => {
-        if (lastOpenedMessageBody) Utils.copyToClipboard(lastOpenedMessageBody, 'Isi pesan disalin!');
+      btnCopyBody.addEventListener('click', function () {
+        if (lastOpenedMessageBody) {
+          Utils.copyToClipboard(lastOpenedMessageBody, 'Isi pesan disalin!');
+        }
       });
     }
 
     const btnCopyOtp = $('tm-btn-reader-copy-otp');
     if (btnCopyOtp && !btnCopyOtp.dataset.bound) {
       btnCopyOtp.dataset.bound = '1';
-      btnCopyOtp.addEventListener('click', () => {
+      btnCopyOtp.addEventListener('click', function () {
         const otp = $('tm-reader-otp-code')?.textContent || '';
-        if (otp && otp !== '------') Utils.copyToClipboard(otp, `Kode OTP ${otp} disalin!`);
+        if (otp && otp !== '------') {
+          Utils.copyToClipboard(otp, 'Kode OTP ' + otp + ' disalin!');
+        }
       });
     }
   }
@@ -342,21 +487,26 @@
       bindEvents();
       initialized = true;
     }
-    await loadMailboxes();
+    await Promise.all([
+      loadMailboxes(),
+      updateStatusBar()
+    ]);
     if (currentMailboxId) {
       fetchInboxMessages(true);
     }
   }
 
   window.TempMailModule = {
-    init,
-    loadMailboxes,
-    fetchInboxMessages,
-    closeReader,
+    init: init,
+    loadMailboxes: loadMailboxes,
+    fetchInboxMessages: fetchInboxMessages,
+    closeReader: closeReader,
+    updateStatusBar: updateStatusBar,
     reset: function () {
       currentMailboxId = null;
       currentMailboxEmail = '';
       closeReader();
     }
   };
+
 })();
