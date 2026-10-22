@@ -7,36 +7,9 @@
 <link rel="icon" href="favicon.ico" />
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
-<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 <link rel="stylesheet" href="css/admin.css" />
 </head>
 <body class="admin-body">
-
-<!-- ADMIN CAPTCHA GATE -->
-<div id="admin-gate" class="admin-gate">
-  <div class="admin-gate-card">
-    <div class="admin-gate-icon">
-      <i data-lucide="shield-check" class="w-6 h-6"></i>
-    </div>
-    <h2 class="admin-gate-title">Verifikasi Keamanan</h2>
-    <p class="admin-gate-sub">Selesaikan verifikasi di bawah untuk melanjutkan ke panel admin.</p>
-
-    <div id="admin-gate-error" class="admin-gate-error hidden"></div>
-    <div id="admin-gate-status" class="admin-gate-status hidden"></div>
-
-    <div class="cf-turnstile admin-gate-turnstile"
-         data-sitekey="0x4AAAAAAAFXQbQssK5W-jNNf"
-         data-theme="light"
-         data-size="normal"
-         data-appearance="always"
-         data-callback="onAdminCaptchaSuccess"
-         data-error-callback="onAdminCaptchaError"
-         data-expired-callback="onAdminCaptchaExpired">
-    </div>
-
-    <p class="admin-gate-foot">Turnstile by Cloudflare · Admin Only</p>
-  </div>
-</div>
 
 <aside id="admin-sidebar" class="admin-sidebar">
   <div class="admin-sidebar-head">
@@ -121,7 +94,6 @@
 
   <div class="admin-content">
 
-    <!-- VIEW: OVERVIEW -->
     <section id="admin-view-overview" class="admin-view active">
       <div class="admin-hero">
         <div>
@@ -194,7 +166,6 @@
       </div>
     </section>
 
-    <!-- VIEW: USERS -->
     <section id="admin-view-users" class="admin-view">
       <div class="admin-hero">
         <div>
@@ -244,7 +215,6 @@
       </div>
     </section>
 
-    <!-- VIEW: POINTS -->
     <section id="admin-view-points" class="admin-view">
       <div class="admin-hero">
         <div>
@@ -290,7 +260,6 @@
       </div>
     </section>
 
-    <!-- VIEW: CONFIG -->
     <section id="admin-view-config" class="admin-view">
       <div class="admin-hero">
         <div>
@@ -310,7 +279,6 @@
       </div>
     </section>
 
-    <!-- VIEW: VISITORS -->
     <section id="admin-view-visitors" class="admin-view">
       <div class="admin-hero">
         <div>
@@ -354,7 +322,6 @@
   </div>
 </main>
 
-<!-- Modal: Detail User -->
 <div id="modal-user-detail" class="admin-modal hidden">
   <div class="admin-modal-card">
     <div class="admin-modal-head">
@@ -370,7 +337,6 @@
   </div>
 </div>
 
-<!-- Modal: Tambah/Kurang Poin -->
 <div id="modal-user-points" class="admin-modal hidden">
   <div class="admin-modal-card admin-modal-sm">
     <div class="admin-modal-head">
@@ -399,7 +365,6 @@
   </div>
 </div>
 
-<!-- Modal: Ban User -->
 <div id="modal-user-ban" class="admin-modal hidden">
   <div class="admin-modal-card admin-modal-sm">
     <div class="admin-modal-head">
@@ -428,7 +393,6 @@
   </div>
 </div>
 
-<!-- Modal: Block IP -->
 <div id="modal-block-ip" class="admin-modal hidden">
   <div class="admin-modal-card admin-modal-sm">
     <div class="admin-modal-head">
