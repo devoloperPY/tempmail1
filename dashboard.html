@@ -113,6 +113,13 @@
       </div>
       <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 shrink-0"></i>
     </button>
+    <button onclick="handleClearCache()" class="dash-clear-cache">
+      <div class="flex items-center gap-2">
+        <i data-lucide="trash-2" class="w-4 h-4"></i>
+        <span>Bersihkan Cache</span>
+      </div>
+      <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+    </button>
   </div>
 </aside>
 
@@ -121,8 +128,8 @@
 <section id="view-overview" class="dash-view active">
   <div class="dash-hero">
     <div>
-      <p class="dash-eyebrow">Dashboard</p>
-      <h1 class="dash-title">Halo, <span id="ov-name" class="dash-gradient-text">User</span></h1>
+      <p class="dash-eyebrow">DASHBOARD</p>
+      <h1 class="dash-title">Halo, <span id="ov-name">User</span></h1>
       <p class="dash-subtitle">Ringkasan aktivitas akun lo hari ini.</p>
     </div>
     <button onclick="switchView('subdomain')" class="btn-primary px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 shrink-0">
@@ -220,7 +227,7 @@
 <section id="view-tempmail" class="dash-view">
   <div class="dash-hero">
     <div>
-      <p class="dash-eyebrow">TempMail</p>
+      <p class="dash-eyebrow">TEMPMAIL</p>
       <h1 class="dash-title">Kotak Masuk Sementara</h1>
       <p class="dash-subtitle">Bikin mailbox sementara, terima pesan instan.</p>
     </div>
@@ -327,7 +334,7 @@
 <section id="view-subdomain" class="dash-view">
   <div class="dash-hero">
     <div>
-      <p class="dash-eyebrow">Subdomain</p>
+      <p class="dash-eyebrow">SUBDOMAIN</p>
       <h1 class="dash-title">Kelola Subdomain</h1>
       <div class="flex flex-wrap items-center gap-2 mt-2">
         <span class="dash-pill dash-pill-amber"><i data-lucide="coins" class="w-3 h-3"></i> <span id="sd-points">0</span> poin</span>
@@ -359,7 +366,7 @@
 <section id="view-points" class="dash-view">
   <div class="dash-hero">
     <div>
-      <p class="dash-eyebrow">Keuangan</p>
+      <p class="dash-eyebrow">KEUANGAN</p>
       <h1 class="dash-title">Saldo &amp; Poin</h1>
       <p class="dash-subtitle">Kelola poin buat bikin subdomain.</p>
     </div>
@@ -393,6 +400,36 @@
     </div>
   </div>
 
+  <div class="glass-card rounded-2xl overflow-hidden mb-5">
+    <div class="dash-panel-head">
+      <div>
+        <h3 class="dash-panel-title">Beli Poin</h3>
+        <p class="dash-panel-sub">Pilih paket poin di bawah ini, lalu hubungi admin.</p>
+      </div>
+    </div>
+    <div class="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:border-blue-400 hover:shadow-md transition cursor-pointer" onclick="handleBuyPoin(500)">
+        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Paket Hemat</p>
+        <p class="text-2xl font-extrabold text-slate-900 mb-1">500 <span class="text-xs font-medium text-slate-500">poin</span></p>
+        <p class="text-[11px] text-slate-500 mb-3">Cocok buat 1 subdomain.</p>
+        <button class="w-full dash-btn-secondary px-3 py-2 rounded-lg text-xs font-semibold">Pilih Paket</button>
+      </div>
+      <div class="p-4 rounded-xl border-2 border-blue-500 bg-blue-50 relative cursor-pointer" onclick="handleBuyPoin(1500)">
+        <span class="absolute -top-3 left-4 px-2 py-0.5 rounded-full bg-blue-600 text-white text-[9px] font-bold">REKOMENDASI</span>
+        <p class="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2">Paket Standar</p>
+        <p class="text-2xl font-extrabold text-slate-900 mb-1">1.500 <span class="text-xs font-medium text-slate-500">poin</span></p>
+        <p class="text-[11px] text-slate-600 mb-3">Buat 3 subdomain.</p>
+        <button class="w-full btn-primary px-3 py-2 rounded-lg text-xs font-semibold">Pilih Paket</button>
+      </div>
+      <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:border-blue-400 hover:shadow-md transition cursor-pointer" onclick="handleBuyPoin(5000)">
+        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Paket Sultan</p>
+        <p class="text-2xl font-extrabold text-slate-900 mb-1">5.000 <span class="text-xs font-medium text-slate-500">poin</span></p>
+        <p class="text-[11px] text-slate-500 mb-3">Buat 10 subdomain.</p>
+        <button class="w-full dash-btn-secondary px-3 py-2 rounded-lg text-xs font-semibold">Pilih Paket</button>
+      </div>
+    </div>
+  </div>
+
   <div class="glass-card rounded-2xl overflow-hidden">
     <div class="dash-panel-head">
       <div>
@@ -413,33 +450,33 @@
 <section id="view-account" class="dash-view">
   <div class="dash-hero">
     <div>
-      <p class="dash-eyebrow">Pengaturan</p>
+      <p class="dash-eyebrow">PENGATURAN</p>
       <h1 class="dash-title">Akun</h1>
       <p class="dash-subtitle">Kelola profil, keamanan, dan sesi.</p>
     </div>
   </div>
 
   <div class="glass-card rounded-2xl overflow-hidden">
-    <div class="p-5 border-b border-slate-200/80 flex items-center gap-4">
+    <div class="p-6 border-b border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center gap-4">
       <div class="dash-avatar dash-avatar-lg" id="ac-avatar">U</div>
       <div class="min-w-0 flex-1">
-        <p class="font-extrabold text-lg text-slate-900 truncate" id="ac-name">Memuat...</p>
-        <p class="text-xs text-slate-500 truncate" id="ac-email">-</p>
-        <div class="flex items-center gap-1.5 mt-1.5">
+        <p class="font-extrabold text-xl text-slate-900 truncate" id="ac-name">Memuat...</p>
+        <p class="text-sm text-slate-500 truncate" id="ac-email">-</p>
+        <div class="flex items-center gap-2 mt-2">
           <span class="dash-tier-badge" id="ac-tier">FREE</span>
-          <span class="text-[10px] text-slate-400" id="ac-member-since">-</span>
+          <span class="text-[11px] text-slate-400" id="ac-member-since">-</span>
         </div>
       </div>
     </div>
 
     <div class="border-b border-slate-200 bg-white flex overflow-x-auto dash-scroll">
-      <button onclick="switchAccTab('profile')" id="atab-profile" class="dash-tab active">Profil</button>
-      <button onclick="switchAccTab('security')" id="atab-security" class="dash-tab">Keamanan</button>
-      <button onclick="switchAccTab('sessions')" id="atab-sessions" class="dash-tab">Sesi Aktif</button>
-      <button onclick="switchAccTab('danger')" id="atab-danger" class="dash-tab">Hapus Akun</button>
+      <button onclick="switchAccTab('profile')" id="atab-profile" class="dash-tab active flex items-center gap-1.5"><i data-lucide="user" class="w-3.5 h-3.5"></i> Profil</button>
+      <button onclick="switchAccTab('security')" id="atab-security" class="dash-tab flex items-center gap-1.5"><i data-lucide="lock" class="w-3.5 h-3.5"></i> Keamanan</button>
+      <button onclick="switchAccTab('sessions')" id="atab-sessions" class="dash-tab flex items-center gap-1.5"><i data-lucide="monitor" class="w-3.5 h-3.5"></i> Sesi Aktif</button>
+      <button onclick="switchAccTab('danger')" id="atab-danger" class="dash-tab flex items-center gap-1.5"><i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Hapus Akun</button>
     </div>
 
-    <div id="apanel-profile" class="p-5 space-y-3">
+    <div id="apanel-profile" class="p-6 space-y-4">
       <div>
         <label class="dash-field-label">Nama Tampilan</label>
         <input type="text" id="ac-display-name" class="dash-field-input" />
@@ -447,12 +484,12 @@
       <div>
         <label class="dash-field-label">Email</label>
         <input type="email" id="ac-email-static" disabled class="dash-field-input dash-field-input-disabled" />
-        <p class="text-[10px] text-slate-400 mt-1">Email tidak bisa diubah.</p>
+        <p class="text-[11px] text-slate-400 mt-1">Email tidak bisa diubah.</p>
       </div>
-      <button id="ac-btn-save-profile" class="btn-primary px-4 py-2 rounded-lg text-xs font-semibold">Simpan Perubahan</button>
+      <button id="ac-btn-save-profile" class="btn-primary px-5 py-2.5 rounded-lg text-sm font-semibold">Simpan Perubahan</button>
     </div>
 
-    <div id="apanel-security" class="hidden p-5 space-y-3">
+    <div id="apanel-security" class="hidden p-6 space-y-4">
       <div>
         <label class="dash-field-label">Password Lama</label>
         <input type="password" id="ac-old-pwd" placeholder="Password lama" class="dash-field-input" />
@@ -461,25 +498,25 @@
         <label class="dash-field-label">Password Baru</label>
         <input type="password" id="ac-new-pwd" placeholder="Min 8 karakter, huruf besar, kecil & angka" class="dash-field-input" />
       </div>
-      <button id="ac-btn-change-pwd" class="btn-primary px-4 py-2 rounded-lg text-xs font-semibold">Ubah Password</button>
+      <button id="ac-btn-change-pwd" class="btn-primary px-5 py-2.5 rounded-lg text-sm font-semibold">Ubah Password</button>
     </div>
 
-    <div id="apanel-sessions" class="hidden p-5">
+    <div id="apanel-sessions" class="hidden p-6">
       <div id="ac-sessions-list" class="space-y-2">
         <div class="skeleton h-14 rounded-xl"></div>
       </div>
-      <button id="ac-btn-revoke-all" class="w-full dash-btn-danger px-3 py-2 rounded-lg text-xs font-semibold mt-3">Cabut Semua Sesi Lain</button>
+      <button id="ac-btn-revoke-all" class="w-full dash-btn-danger px-3 py-2.5 rounded-lg text-sm font-semibold mt-4">Cabut Semua Sesi Lain</button>
     </div>
 
-    <div id="apanel-danger" class="hidden p-5 space-y-3">
-      <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-800">
+    <div id="apanel-danger" class="hidden p-6 space-y-4">
+      <div class="p-4 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
         <strong>Hati-hati.</strong> Semua mailbox, subdomain, dan data lo bakal dihapus permanen.
       </div>
       <div>
         <label class="dash-field-label">Konfirmasi Password</label>
         <input type="password" id="ac-delete-pwd" placeholder="Masukkan password" class="dash-field-input" />
       </div>
-      <button id="ac-btn-delete-account" class="dash-btn-danger px-4 py-2 rounded-lg text-xs font-semibold">Hapus Akun Permanen</button>
+      <button id="ac-btn-delete-account" class="dash-btn-danger px-5 py-2.5 rounded-lg text-sm font-semibold">Hapus Akun Permanen</button>
     </div>
   </div>
 </section>
