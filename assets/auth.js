@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.onTurnstileSuccess = function(token) {
     window.turnstileToken = token;
-    console.log('Turnstile Success');
   };
 
   window.onTurnstileError = function(errorCode) {
@@ -318,6 +317,178 @@ document.addEventListener('DOMContentLoaded', () => {
             window.location.href = `verify.html?email=${encodeURIComponent(email)}`;
           }, 1200);
         }
+      } finally {
+        Utils.hideLoading();
+      }
+    });
+  }
+
+  // =================== FORGOT PASSWORD ===================
+  const forgotForm = document.getElementById('forgot-form');
+  if (forgotForm) {
+    const errBox = document.getElementById('auth-error-box');
+    const okBox = document.getElementById('auth-success-box');
+    const btnSubmit = document.getElementById('btn-forgot-submit');
+
+    forgotForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (errBox) errBox.classList.add('hidden');
+      if (okBox) okBox.classList.add('hidden');
+
+      if (!window.turnstileToken) {
+        if (errBox) {
+          errBox.textContent = 'Harap selesaikan captcha terlebih dahulu.';
+          errBox.classList.remove('hidden');
+        }
+        return;
+      }
+
+      const email = document.getElementById('forgot-email').value.trim().toLowerCase();
+      if (!email) return;
+
+      if (btnSubmit) btnSubmit.disabled = true;
+      Utils.showLoading('Mengirim kode reset...');
+      try {
+        const res = await apiFetch('/api/web/auth/forgot-password', {
+          method: 'POST',
+          body: { email, turnstile_token: window.turnstileToken },
+          skipAuthRedirect: true
+        });
+
+        sessionStorage.setItem('reset_email', email);
+        if (okBox) {
+          okBox.textContent = res.message || 'Kode reset telah dikirim ke email kamu.';
+          okBox.classList.remove('hidden');
+        }
+        Utils.showToast('Kode reset dikirim!', 'success');
+
+        setTimeout(() => {
+          window.location.href = `reset-password.html?email=${encodeURIComponent(email)}`;
+        }, 1200);
+      } catch (err) {
+        if (errBox) {
+          errBox.textContent = err.message || 'Gagal mengirim kode reset.';
+          errBox.classList.remove('hidden');
+        }
+        if (window.turnstile) window.turnstile.reset();
+        window.turnstileToken = '';
+        if (btnSubmit) btnSubmit.disabled = false;
+      } finally {
+        Utils.hideLoading();
+      }
+    });
+  }
+
+  // =================== RESET PASSWORD ===================
+  const resetForm = document.getElementById('reset-form');
+  if (resetForm) {
+    const params = new URLSearchParams(window.location.search);
+    const email = (params.get('email') || sessionStorage.getItem('reset_email') || '').trim();
+    const emailDisplay = document.getElementById('reset-email-display');
+    const otpInput = document.getElementById('reset-otp');
+    const newPwd = document.getElementById('reset-new-password');
+    const countdownEl = document.getElementById('reset-countdown');
+    const togglePwd = document.getElementById('toggle-reset-pwd');
+    const btnSubmit = document.getElementById('btn-reset-submit');
+    const errBox = document.getElementById('auth-error-box');
+    const okBox = document.getElementById('auth-success-box');
+
+    if (!email) {
+      window.location.href = 'forgot-password.html';
+      return;
+    }
+
+    if (emailDisplay) emailDisplay.textContent = email;
+    sessionStorage.setItem('reset_email', email);
+
+    Utils.countdown(600, ({ formatted }) => {
+      if (countdownEl) countdownEl.textContent = formatted;
+    });
+
+    if (otpInput) {
+      otpInput.addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+      });
+    }
+
+    if (newPwd) {
+      newPwd.addEventListener('input', () => {
+        const { checks } = Utils.validatePassword(newPwd.value);
+        const setItem = (id, ok, text) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.className = ok
+            ? 'flex items-center gap-1 text-emerald-600 font-semibold'
+            : 'flex items-center gap-1 text-slate-400';
+          el.innerHTML = `<span>${ok ? '✓' : '○'}</span> ${text}`;
+        };
+        setItem('rchk-length', checks.length, 'Min. 8 karakter');
+        setItem('rchk-upper', checks.upper, 'Huruf besar (A-Z)');
+        setItem('rchk-lower', checks.lower, 'Huruf kecil (a-z)');
+        setItem('rchk-number', checks.number, 'Angka (0-9)');
+      });
+    }
+
+    if (togglePwd && newPwd) {
+      togglePwd.addEventListener('click', () => {
+        newPwd.type = newPwd.type === 'password' ? 'text' : 'password';
+      });
+    }
+
+    resetForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (errBox) errBox.classList.add('hidden');
+      if (okBox) okBox.classList.add('hidden');
+
+      const otpCode = otpInput.value.trim();
+      const password = newPwd.value;
+
+      if (!/^\d{6}$/.test(otpCode)) {
+        if (errBox) {
+          errBox.textContent = 'Masukkan 6 digit kode OTP dengan benar.';
+          errBox.classList.remove('hidden');
+        }
+        return;
+      }
+
+      const pwdValidation = Utils.validatePassword(password);
+      if (!pwdValidation.valid) {
+        if (errBox) {
+          errBox.textContent = 'Password minimal 8 karakter, mengandung huruf besar, huruf kecil, dan angka.';
+          errBox.classList.remove('hidden');
+        }
+        return;
+      }
+
+      if (btnSubmit) btnSubmit.disabled = true;
+      Utils.showLoading('Mereset password...');
+      try {
+        const res = await apiFetch('/api/web/auth/reset-password', {
+          method: 'POST',
+          body: {
+            email,
+            otp_code: otpCode,
+            new_password: password
+          },
+          skipAuthRedirect: true
+        });
+
+        if (okBox) {
+          okBox.textContent = res.message || 'Password berhasil direset.';
+          okBox.classList.remove('hidden');
+        }
+        sessionStorage.removeItem('reset_email');
+        Utils.showToast('Password direset! Silakan login.', 'success');
+
+        setTimeout(() => {
+          window.location.href = 'login.html';
+        }, 1800);
+      } catch (err) {
+        if (errBox) {
+          errBox.textContent = err.message || 'Gagal reset password.';
+          errBox.classList.remove('hidden');
+        }
+        if (btnSubmit) btnSubmit.disabled = false;
       } finally {
         Utils.hideLoading();
       }
