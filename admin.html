@@ -94,6 +94,7 @@
 
   <div class="admin-content">
 
+    <!-- VIEW OVERVIEW -->
     <section id="admin-view-overview" class="admin-view active">
       <div class="admin-hero">
         <div>
@@ -149,7 +150,7 @@
             <span class="admin-badge admin-badge-blue">7 Hari</span>
           </div>
           <div class="admin-chart-placeholder" id="users-timeline">
-            <div class="skeleton h-32 w-full rounded-xl"></div>
+            <div class="admin-skeleton h-32 w-full rounded-xl"></div>
           </div>
         </div>
         <div class="admin-card">
@@ -158,14 +159,15 @@
             <button onclick="adminSwitchView('points')" class="admin-link-btn">Lihat Ledger</button>
           </div>
           <div id="recent-activity" class="space-y-1">
-            <div class="skeleton h-14 w-full rounded-xl"></div>
-            <div class="skeleton h-14 w-full rounded-xl"></div>
-            <div class="skeleton h-14 w-full rounded-xl"></div>
+            <div class="admin-skeleton h-14 w-full rounded-xl mb-2"></div>
+            <div class="admin-skeleton h-14 w-full rounded-xl mb-2"></div>
+            <div class="admin-skeleton h-14 w-full rounded-xl"></div>
           </div>
         </div>
       </div>
     </section>
 
+    <!-- VIEW USERS (CARD LIST) -->
     <section id="admin-view-users" class="admin-view">
       <div class="admin-hero">
         <div>
@@ -192,29 +194,17 @@
         </button>
       </div>
 
-      <div class="admin-card overflow-hidden">
-        <div id="users-table-wrap" class="overflow-x-auto">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Email</th>
-                <th>Tier</th>
-                <th>Status</th>
-                <th>Poin</th>
-                <th>Terdaftar</th>
-                <th>Last Login</th>
-                <th class="text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="users-tbody">
-              <tr><td colspan="7" class="text-center p-8"><div class="skeleton h-12 w-full rounded-xl"></div></td></tr>
-            </tbody>
-          </table>
+      <div class="admin-card overflow-hidden" style="padding: 16px;">
+        <!-- Container untuk Card List -->
+        <div id="users-tbody" class="admin-data-list">
+          <div class="admin-skeleton h-16 w-full rounded-xl mb-3"></div>
+          <div class="admin-skeleton h-16 w-full rounded-xl"></div>
         </div>
-        <div class="admin-pagination" id="users-pagination"></div>
+        <div class="admin-pagination" id="users-pagination" style="padding-top: 16px; margin-top: 8px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;"></div>
       </div>
     </section>
 
+    <!-- VIEW POINTS LEDGER -->
     <section id="admin-view-points" class="admin-view">
       <div class="admin-hero">
         <div>
@@ -253,13 +243,14 @@
               </tr>
             </thead>
             <tbody id="ledger-tbody">
-              <tr><td colspan="6" class="text-center p-8"><div class="skeleton h-12 w-full rounded-xl"></div></td></tr>
+              <tr><td colspan="6" class="text-center p-8"><div class="admin-skeleton h-12 w-full rounded-xl"></div></td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </section>
 
+    <!-- VIEW CONFIG -->
     <section id="admin-view-config" class="admin-view">
       <div class="admin-hero">
         <div>
@@ -274,11 +265,12 @@
       </div>
 
       <div class="admin-config-grid" id="config-grid">
-        <div class="skeleton h-24 w-full rounded-xl"></div>
-        <div class="skeleton h-24 w-full rounded-xl"></div>
+        <div class="admin-skeleton h-24 w-full rounded-xl"></div>
+        <div class="admin-skeleton h-24 w-full rounded-xl"></div>
       </div>
     </section>
 
+    <!-- VIEW VISITORS -->
     <section id="admin-view-visitors" class="admin-view">
       <div class="admin-hero">
         <div>
@@ -312,7 +304,7 @@
               </tr>
             </thead>
             <tbody id="visitors-tbody">
-              <tr><td colspan="6" class="text-center p-8"><div class="skeleton h-12 w-full rounded-xl"></div></td></tr>
+              <tr><td colspan="6" class="text-center p-8"><div class="admin-skeleton h-12 w-full rounded-xl"></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -322,6 +314,7 @@
   </div>
 </main>
 
+<!-- MODAL USER DETAIL -->
 <div id="modal-user-detail" class="admin-modal hidden">
   <div class="admin-modal-card">
     <div class="admin-modal-head">
@@ -337,6 +330,7 @@
   </div>
 </div>
 
+<!-- MODAL USER POINTS -->
 <div id="modal-user-points" class="admin-modal hidden">
   <div class="admin-modal-card admin-modal-sm">
     <div class="admin-modal-head">
@@ -365,6 +359,7 @@
   </div>
 </div>
 
+<!-- MODAL USER BAN -->
 <div id="modal-user-ban" class="admin-modal hidden">
   <div class="admin-modal-card admin-modal-sm">
     <div class="admin-modal-head">
@@ -393,6 +388,7 @@
   </div>
 </div>
 
+<!-- MODAL BLOCK IP -->
 <div id="modal-block-ip" class="admin-modal hidden">
   <div class="admin-modal-card admin-modal-sm">
     <div class="admin-modal-head">
