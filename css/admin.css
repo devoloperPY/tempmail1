@@ -41,6 +41,7 @@ html {
   font-family: 'JetBrains Mono', monospace;
 }
 
+/* ================= SIDEBAR ================= */
 .admin-sidebar {
   position: fixed;
   top: 0;
@@ -243,6 +244,7 @@ html {
   opacity: 1;
 }
 
+/* ================= MAIN CONTENT ================= */
 .admin-main {
   margin-left: 240px;
   min-height: 100vh;
@@ -337,6 +339,7 @@ html {
   }
 }
 
+/* ================= VIEWS & HERO ================= */
 .admin-view {
   display: none;
   animation: adminViewIn 0.3s var(--admin-spring);
@@ -396,6 +399,7 @@ html {
   margin: 4px 0 0;
 }
 
+/* ================= BUTTONS ================= */
 .admin-btn-primary {
   display: inline-flex;
   align-items: center;
@@ -498,6 +502,7 @@ html {
   text-decoration: underline;
 }
 
+/* ================= STATS CARD ================= */
 .admin-stat-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -570,6 +575,7 @@ html {
   margin-top: 6px;
 }
 
+/* ================= CARDS & GRIDS ================= */
 .admin-two-col {
   display: grid;
   grid-template-columns: 1fr;
@@ -623,6 +629,7 @@ html {
   padding: 16px;
 }
 
+/* ================= FILTER & SEARCH ================= */
 .admin-filter-bar {
   display: flex;
   flex-wrap: wrap;
@@ -680,6 +687,38 @@ html {
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
 }
 
+/* ================= DATA LIST (CARD LIST BARU) ================= */
+.admin-data-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-data-row {
+  background: #ffffff;
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+@media (min-width: 640px) {
+  .admin-data-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.admin-data-row:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px -4px rgba(15, 23, 42, 0.08);
+}
+
+/* ================= TABLE (UNTUK LEDGER/VISITORS) ================= */
 .admin-table {
   width: 100%;
   border-collapse: collapse;
@@ -732,6 +771,7 @@ html {
   color: var(--admin-text-muted);
 }
 
+/* ================= MODALS ================= */
 .admin-modal {
   position: fixed;
   inset: 0;
@@ -839,6 +879,7 @@ html {
   box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
 }
 
+/* ================= CONFIG GRID ================= */
 .admin-config-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -881,6 +922,7 @@ html {
   margin: 4px 0 0;
 }
 
+/* ================= TOAST & SKELETON ================= */
 .admin-toast-wrap {
   position: fixed;
   top: 16px;
@@ -932,6 +974,7 @@ html {
   100% { background-position: -200% 0; }
 }
 
+/* ================= ACTION BUTTONS ================= */
 .admin-action-btn {
   padding: 5px 10px;
   border-radius: 6px;
@@ -1001,12 +1044,7 @@ html {
   }
 }
 
-
-
-
-
-
-
+/* ================= ADMIN GATE (LOGIN) ================= */
 .admin-gate {
   position: fixed;
   inset: 0;
