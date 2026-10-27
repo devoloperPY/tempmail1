@@ -286,9 +286,12 @@
     }
   }
 
+  // ==========================================
+  // RENDER USERS: MENGGUNAKAN CARD LIST MODERN
+  // ==========================================
   async function loadUsers() {
-    const tbody = $('users-tbody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8"><div class="admin-skeleton h-12 w-full rounded-xl"></div></td></tr>';
+    const wrap = $('users-tbody');
+    if (wrap) wrap.innerHTML = '<div class="admin-skeleton h-16 w-full rounded-xl mb-3"></div><div class="admin-skeleton h-16 w-full rounded-xl"></div>';
 
     try {
       const params = new URLSearchParams();
@@ -309,12 +312,12 @@
         : users;
 
       if (!filtered.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-xs text-slate-400">Tidak ada user.</td></tr>';
+        wrap.innerHTML = '<div class="p-8 text-center text-xs text-slate-400">Tidak ada user.</div>';
         renderUsersPagination();
         return;
       }
 
-      tbody.innerHTML = filtered.map(function (u) {
+      wrap.innerHTML = filtered.map(function (u) {
         let statusBadge = '';
         if (u.banned) statusBadge = '<span class="admin-badge admin-badge-red">Banned</span>';
         else if (!u.email_verified) statusBadge = '<span class="admin-badge admin-badge-amber">Unverified</span>';
@@ -325,29 +328,34 @@
           : '<span class="admin-badge admin-badge-gray">Free</span>';
 
         return (
-          '<tr>' +
-            '<td>' +
-              '<p class="font-semibold text-slate-900 truncate max-w-[240px]">' + esc(u.email) + '</p>' +
-              '<p class="text-[11px] text-slate-500 truncate max-w-[240px]">' + esc(u.display_name || '-') + '</p>' +
-            '</td>' +
-            '<td>' + tierBadge + '</td>' +
-            '<td>' + statusBadge + '</td>' +
-            '<td class="font-bold text-amber-600">' + fmtNum(u.points || 0) + '</td>' +
-            '<td class="text-xs text-slate-500">' + esc(fmtDate(u.created_at)) + '</td>' +
-            '<td class="text-xs text-slate-500">' + esc(fmtRel(u.last_login)) + '</td>' +
-            '<td class="text-right">' +
-              '<div class="inline-flex gap-1">' +
-                '<button onclick="openUserDetail(\'' + esc(u.id) + '\')" class="admin-action-btn admin-action-btn-view">Detail</button>' +
-                '<button onclick="openUserPointsModal(\'' + esc(u.id) + '\',\'' + esc(u.email) + '\',' + (u.points || 0) + ')" class="admin-action-btn admin-action-btn-points">Poin</button>' +
+          '<div style="background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:16px; margin-bottom:12px; display:flex; flex-direction:column; sm:flex-direction:row; align-items:flex-start; justify-content:space-between; gap:16px; box-shadow:0 2px 8px rgba(0,0,0,0.02);">' +
+            '<div style="display:flex; align-items:center; gap:14px; flex:1; min-width:0;">' +
+              '<div style="width:42px; height:42px; border-radius:12px; background:#eff6ff; color:#2563eb; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px; flex-shrink:0;">' + esc((u.display_name || u.email).charAt(0).toUpperCase()) + '</div>' +
+              '<div style="min-width:0;">' +
+                '<p style="font-weight:700; font-size:14px; color:#0f172a; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(u.email) + '</p>' +
+                '<div style="display:flex; align-items:center; gap:6px; margin-top:4px; flex-wrap:wrap;">' +
+                  '<span style="font-size:11px; color:#64748b;">' + esc(u.display_name || '-') + '</span>' +
+                  tierBadge + statusBadge +
+                '</div>' +
               '</div>' +
-            '</td>' +
-          '</tr>'
+            '</div>' +
+            '<div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0; width:100%; sm:width:auto; margin-top:12px; sm:margin-top:0;">' +
+              '<div>' +
+                '<p style="font-weight:700; font-size:14px; color:#d97706; margin:0;">' + fmtNum(u.points || 0) + ' Poin</p>' +
+                '<p style="font-size:10px; color:#94a3b8; margin:2px 0 0;">Daftar: ' + esc(fmtDate(u.created_at)) + '</p>' +
+              '</div>' +
+              '<div style="display:flex; gap:8px; width:100%; justify-content:flex-end;">' +
+                '<button onclick="openUserDetail(\'' + esc(u.id) + '\')" style="padding:8px 16px; border-radius:10px; font-size:12px; font-weight:700; background:#f1f5f9; color:#334155; border:none; cursor:pointer;">Detail</button>' +
+                '<button onclick="openUserPointsModal(\'' + esc(u.id) + '\',\'' + esc(u.email) + '\',' + (u.points || 0) + ')" style="padding:8px 16px; border-radius:10px; font-size:12px; font-weight:700; background:#fffbeb; color:#b45309; border:1px solid #fde68a; cursor:pointer;">Poin</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>'
         );
       }).join('');
 
       renderUsersPagination();
     } catch (err) {
-      tbody.innerHTML = '<tr><td colspan="7" class="text-center p-8 text-xs text-red-500">' + esc(err.message) + '</td></tr>';
+      wrap.innerHTML = '<div class="p-8 text-center text-xs text-red-500">' + esc(err.message) + '</div>';
     }
   }
 
@@ -361,10 +369,10 @@
     const hasNext = (state.usersPage + 1) * state.usersLimit < state.usersTotal;
 
     wrap.innerHTML =
-      '<span>Menampilkan ' + (state.usersTotal ? start : 0) + '–' + end + ' dari ' + state.usersTotal + '</span>' +
+      '<span style="font-size:12px; color:#64748b;">Menampilkan ' + (state.usersTotal ? start : 0) + '–' + end + ' dari ' + state.usersTotal + '</span>' +
       '<div class="flex gap-1">' +
-        '<button onclick="changeUsersPage(-1)" ' + (!hasPrev ? 'disabled' : '') + ' class="admin-action-btn admin-action-btn-view" style="opacity:' + (hasPrev ? '1' : '0.4') + '">Prev</button>' +
-        '<button onclick="changeUsersPage(1)" ' + (!hasNext ? 'disabled' : '') + ' class="admin-action-btn admin-action-btn-view" style="opacity:' + (hasNext ? '1' : '0.4') + '">Next</button>' +
+        '<button onclick="changeUsersPage(-1)" ' + (!hasPrev ? 'disabled' : '') + ' class="admin-action-btn admin-action-btn-view" style="opacity:' + (hasPrev ? '1' : '0.4') + '; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; background:#f1f5f9; color:#334155; border:none;">Prev</button>' +
+        '<button onclick="changeUsersPage(1)" ' + (!hasNext ? 'disabled' : '') + ' class="admin-action-btn admin-action-btn-view" style="opacity:' + (hasNext ? '1' : '0.4') + '; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; background:#f1f5f9; color:#334155; border:none;">Next</button>' +
       '</div>';
   }
 
@@ -428,12 +436,12 @@
           infoRow('Sesi Aktif', fmtNum(u.active_sessions || 0)) +
         '</div>' +
         '<div class="grid grid-cols-2 gap-2">' +
-          '<button onclick="openUserPointsModal(\'' + esc(u.id) + '\',\'' + esc(u.email) + '\',' + (u.points || 0) + ')" class="admin-btn-primary justify-center">Kelola Poin</button>' +
+          '<button onclick="openUserPointsModal(\'' + esc(u.id) + '\',\'' + esc(u.email) + '\',' + (u.points || 0) + ')" class="admin-btn-primary justify-center" style="width:100%;">Kelola Poin</button>' +
           (u.banned
-            ? '<button onclick="submitUserUnban(\'' + esc(u.id) + '\')" class="admin-btn-secondary justify-center">Unban</button>'
-            : '<button onclick="openBanModal(\'' + esc(u.id) + '\',\'' + esc(u.email) + '\')" class="admin-btn-secondary justify-center" style="color:#b91c1c;border-color:#fecaca">Ban</button>'
+            ? '<button onclick="submitUserUnban(\'' + esc(u.id) + '\')" class="admin-btn-secondary justify-center" style="width:100%;">Unban</button>'
+            : '<button onclick="openBanModal(\'' + esc(u.id) + '\',\'' + esc(u.email) + '\')" class="admin-btn-secondary justify-center" style="color:#b91c1c;border-color:#fecaca; width:100%;">Ban</button>'
           ) +
-          '<button onclick="submitDeleteUser(\'' + esc(u.id) + '\',\'' + esc(u.email) + '\')" class="admin-btn-danger justify-center col-span-2">Hapus Akun Permanen</button>' +
+          '<button onclick="submitDeleteUser(\'' + esc(u.id) + '\',\'' + esc(u.email) + '\')" class="admin-btn-danger justify-center col-span-2" style="width:100%; margin-top:8px;">Hapus Akun Permanen</button>' +
         '</div>';
     } catch (err) {
       body.innerHTML = '<p class="text-xs text-red-500 p-4">' + esc(err.message) + '</p>';
@@ -469,7 +477,13 @@
       });
       adminToast('Poin disesuaikan. Saldo baru: ' + fmtNum(res.data.balance_after), 'success');
       closeModal('modal-user-points');
+      
+      // Paksa refresh list user dan detail modal jika sedang terbuka
       loadUsers();
+      if (!$('modal-user-detail')?.classList.contains('hidden')) {
+        openUserDetail(state.currentUserId);
+      }
+
     } catch (err) {
       adminToast(err.message, 'error');
     } finally {
@@ -721,10 +735,10 @@
             '<td class="text-right">' +
               '<div class="inline-flex gap-1">' +
                 (v.banned
-                  ? '<button onclick="submitUnblockIp(\'' + esc(v.ip) + '\')" class="admin-action-btn admin-action-btn-success">Unblock</button>'
-                  : '<button onclick="submitBlockIpDirect(\'' + esc(v.ip) + '\')" class="admin-action-btn admin-action-btn-danger">Block</button>'
+                  ? '<button onclick="submitUnblockIp(\'' + esc(v.ip) + '\')" class="admin-action-btn admin-action-btn-success" style="padding:4px 8px; font-size:11px;">Unblock</button>'
+                  : '<button onclick="submitBlockIpDirect(\'' + esc(v.ip) + '\')" class="admin-action-btn admin-action-btn-danger" style="padding:4px 8px; font-size:11px;">Block</button>'
                 ) +
-                '<button onclick="submitToggleWhitelist(\'' + esc(v.ip) + '\',' + (v.is_whitelist ? 0 : 1) + ')" class="admin-action-btn admin-action-btn-points">' + (v.is_whitelist ? 'Unwhitelist' : 'Whitelist') + '</button>' +
+                '<button onclick="submitToggleWhitelist(\'' + esc(v.ip) + '\',' + (v.is_whitelist ? 0 : 1) + ')" class="admin-action-btn admin-action-btn-points" style="padding:4px 8px; font-size:11px;">' + (v.is_whitelist ? 'Unwhitelist' : 'Whitelist') + '</button>' +
               '</div>' +
             '</td>' +
           '</tr>'
