@@ -62,23 +62,25 @@
     if (!wrap) {
       wrap = document.createElement('div');
       wrap.id = 'admin-toast';
-      wrap.className = 'admin-toast-wrap';
+      wrap.className = 'fixed top-4 right-4 z-[9999] flex flex-col gap-2 w-full max-w-sm pointer-events-none';
       document.body.appendChild(wrap);
     }
     const el = document.createElement('div');
-    el.className = 'admin-toast' + (type === 'error' ? ' admin-toast-error' : type === 'warning' ? ' admin-toast-warning' : '');
-    const iconColor = type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#10b981';
-    const iconName = type === 'error' ? 'x' : type === 'warning' ? 'alert-triangle' : 'check';
-    el.innerHTML =
-      '<div style="color:' + iconColor + ';flex-shrink:0"><i data-lucide="' + iconName + '" class="w-4 h-4"></i></div>' +
-      '<div class="flex-1 min-w-0"><p class="text-xs font-semibold text-slate-800 break-words">' + esc(msg) + '</p></div>';
+    const colors = {
+      success: 'border-emerald-500 bg-emerald-50 text-emerald-800',
+      error: 'border-red-500 bg-red-50 text-red-800',
+      warning: 'border-amber-500 bg-amber-50 text-amber-800'
+    };
+    el.className = `pointer-events-auto border-l-4 p-4 rounded-xl shadow-lg text-xs font-semibold ${colors[type] || colors.success}`;
+    const iconName = type === 'error' ? 'x-circle' : type === 'warning' ? 'alert-triangle' : 'check-circle';
+    el.innerHTML = `<div class="flex items-center gap-2"><i data-lucide="${iconName}" class="w-4 h-4"></i><span>${esc(msg)}</span></div>`;
     wrap.appendChild(el);
     if (window.lucide) window.lucide.createIcons();
-    setTimeout(function () {
+    setTimeout(() => {
       el.style.opacity = '0';
       el.style.transform = 'translateX(20px)';
       el.style.transition = 'all 0.2s';
-      setTimeout(function () { el.remove(); }, 200);
+      setTimeout(() => el.remove(), 200);
     }, 4000);
   }
 
@@ -88,12 +90,7 @@
       loader = document.createElement('div');
       loader.id = 'admin-loader';
       loader.style.cssText = 'position:fixed;inset:0;z-index:9998;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,0.4);backdrop-filter:blur(4px)';
-      loader.innerHTML =
-        '<div style="background:#fff;padding:20px 28px;border-radius:12px;display:flex;align-items:center;gap:12px;box-shadow:0 12px 40px -8px rgba(15,23,42,0.3)">' +
-          '<div style="width:20px;height:20px;border:2.5px solid rgba(245,158,11,0.25);border-top-color:#f59e0b;border-radius:50%;animation:spin 0.7s linear infinite"></div>' +
-          '<span style="font-size:13px;font-weight:600;color:#0f172a">Memproses...</span>' +
-        '</div>' +
-        '<style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
+      loader.innerHTML = '<div style="background:#fff;padding:20px 28px;border-radius:12px;display:flex;align-items:center;gap:12px;box-shadow:0 12px 40px -8px rgba(15,23,42,0.3)"><div style="width:20px;height:20px;border:2.5px solid rgba(37,99,235,0.25);border-top-color:#2563eb;border-radius:50%;animation:spin 0.7s linear infinite"></div><span style="font-size:13px;font-weight:600;color:#0f172a">Memproses...</span></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
       document.body.appendChild(loader);
     } else if (loader && !show) {
       loader.remove();
@@ -116,12 +113,12 @@
   function adminSwitchView(name, ev) {
     if (ev) ev.preventDefault();
 
-    $all('.admin-view').forEach(function (v) { v.classList.remove('active'); });
+    $all('.admin-view').forEach(v => v.classList.remove('active'));
     const target = $('admin-view-' + name);
     if (target) target.classList.add('active');
 
-    $all('.admin-nav-item').forEach(function (i) { i.classList.remove('active'); });
-    $all('.admin-nav-item').forEach(function (i) {
+    $all('.admin-nav-item').forEach(i => i.classList.remove('active'));
+    $all('.admin-nav-item').forEach(i => {
       if (i.getAttribute('data-view') === name) i.classList.add('active');
     });
 
@@ -161,10 +158,6 @@
     if (m) m.classList.add('hidden');
   }
 
-  function delay(ms) {
-    return new Promise(function (r) { setTimeout(r, ms); });
-  }
-
   async function tryFetchMe() {
     return await apiFetch('/api/web/auth/me', { skipAuthRedirect: true });
   }
@@ -177,26 +170,9 @@
     }
 
     let res = null;
-    let err = null;
-
     try {
       res = await tryFetchMe();
-    } catch (e) {
-      err = e;
-    }
-
-    if (!res?.data?.user || err) {
-      const retryToken = getToken();
-      if (retryToken) {
-        await delay(600);
-        try {
-          res = await tryFetchMe();
-          err = null;
-        } catch (e2) {
-          err = e2;
-        }
-      }
-    }
+    } catch (e) {}
 
     if (!res?.data?.user) {
       clearToken();
@@ -257,38 +233,36 @@
       const txs = res?.data?.transactions || [];
 
       if (!txs.length) {
-        box.innerHTML = '<p class="p-4 text-xs text-slate-500">Belum ada transaksi.</p>';
+        box.innerHTML = '<p class="p-4 text-xs text-slate-500 text-center">Belum ada transaksi.</p>';
         return;
       }
 
-      box.innerHTML = txs.map(function (t) {
+      box.innerHTML = txs.map(t => {
         const isPlus = t.delta > 0;
         let label = t.reason || 'Transaksi';
         if (t.reason === 'signup_bonus') label = 'Signup bonus';
-        else if (t.reason === 'create_pointing_subdomain') label = 'Create pointing subdomain';
-        else if (t.reason === 'create_termux_subdomain') label = 'Create termux subdomain';
+        else if (t.reason === 'create_pointing_subdomain') label = 'Create subdomain';
+        else if (t.reason === 'create_termux_subdomain') label = 'Create termux';
         else if (t.reason === 'admin_adjustment') label = 'Admin adjustment';
 
-        return (
-          '<div class="p-3 flex items-start gap-3 hover:bg-slate-50 transition rounded-lg">' +
-            '<div class="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ' + (isPlus ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700') + '">' + (isPlus ? '+' : '−') + '</div>' +
-            '<div class="min-w-0 flex-1">' +
-              '<p class="text-xs font-semibold text-slate-800 truncate">' + esc(label) + '</p>' +
-              '<p class="text-[10px] text-slate-500 truncate">' + esc(t.email || t.user_id || '-') + '</p>' +
-              '<p class="text-[10px] text-slate-400 mt-0.5">' + esc(fmtRel(t.created_at)) + '</p>' +
-            '</div>' +
-            '<p class="text-xs font-bold ' + (isPlus ? 'text-emerald-600' : 'text-red-600') + ' shrink-0">' + (isPlus ? '+' : '') + fmtNum(t.delta) + '</p>' +
-          '</div>'
-        );
+        return `
+          <div class="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${isPlus ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">${isPlus ? '+' : '−'}</div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xs font-bold text-slate-800 truncate">${esc(label)}</p>
+              <p class="text-[10px] text-slate-500 truncate">${esc(t.email || t.user_id || '-')}</p>
+            </div>
+            <div class="text-right shrink-0">
+              <p class="text-xs font-bold ${isPlus ? 'text-emerald-600' : 'text-red-600'}">${isPlus ? '+' : ''}${fmtNum(t.delta)}</p>
+              <p class="text-[10px] text-slate-400">${esc(fmtRel(t.created_at))}</p>
+            </div>
+          </div>`;
       }).join('');
     } catch (err) {
-      box.innerHTML = '<p class="p-4 text-xs text-red-500">' + esc(err.message) + '</p>';
+      box.innerHTML = `<p class="p-4 text-xs text-red-500">${esc(err.message)}</p>`;
     }
   }
 
-  // ==========================================
-  // RENDER USERS: MENGGUNAKAN CARD LIST MODERN
-  // ==========================================
   async function loadUsers() {
     const wrap = $('users-tbody');
     if (wrap) wrap.innerHTML = '<div class="admin-skeleton h-16 w-full rounded-xl mb-3"></div><div class="admin-skeleton h-16 w-full rounded-xl"></div>';
@@ -301,14 +275,10 @@
 
       const res = await apiFetch('/api/admin/web/users?' + params.toString());
       const users = res?.data?.users || [];
-      const total = res?.data?.total || 0;
-      state.usersTotal = total;
+      state.usersTotal = res?.data?.total || 0;
 
       const filtered = state.usersSearch
-        ? users.filter(function (u) {
-            const s = state.usersSearch.toLowerCase();
-            return (u.email || '').toLowerCase().includes(s) || (u.display_name || '').toLowerCase().includes(s);
-          })
+        ? users.filter(u => (u.email || '').toLowerCase().includes(state.usersSearch) || (u.display_name || '').toLowerCase().includes(state.usersSearch))
         : users;
 
       if (!filtered.length) {
@@ -317,45 +287,42 @@
         return;
       }
 
-      wrap.innerHTML = filtered.map(function (u) {
-        let statusBadge = '';
-        if (u.banned) statusBadge = '<span class="admin-badge admin-badge-red">Banned</span>';
-        else if (!u.email_verified) statusBadge = '<span class="admin-badge admin-badge-amber">Unverified</span>';
-        else statusBadge = '<span class="admin-badge admin-badge-green">Verified</span>';
-
+      wrap.innerHTML = filtered.map(u => {
+        let statusBadge = u.banned
+          ? '<span class="admin-badge admin-badge-red">Banned</span>'
+          : (!u.email_verified ? '<span class="admin-badge admin-badge-amber">Unverified</span>' : '<span class="admin-badge admin-badge-green">Verified</span>');
         const tierBadge = u.tier === 'premium'
           ? '<span class="admin-badge admin-badge-amber">Premium</span>'
           : '<span class="admin-badge admin-badge-gray">Free</span>';
 
-        return (
-          '<div style="background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:16px; margin-bottom:12px; display:flex; flex-direction:column; sm:flex-direction:row; align-items:flex-start; justify-content:space-between; gap:16px; box-shadow:0 2px 8px rgba(0,0,0,0.02);">' +
-            '<div style="display:flex; align-items:center; gap:14px; flex:1; min-width:0;">' +
-              '<div style="width:42px; height:42px; border-radius:12px; background:#eff6ff; color:#2563eb; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px; flex-shrink:0;">' + esc((u.display_name || u.email).charAt(0).toUpperCase()) + '</div>' +
-              '<div style="min-width:0;">' +
-                '<p style="font-weight:700; font-size:14px; color:#0f172a; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + esc(u.email) + '</p>' +
-                '<div style="display:flex; align-items:center; gap:6px; margin-top:4px; flex-wrap:wrap;">' +
-                  '<span style="font-size:11px; color:#64748b;">' + esc(u.display_name || '-') + '</span>' +
-                  tierBadge + statusBadge +
-                '</div>' +
-              '</div>' +
-            '</div>' +
-            '<div style="text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0; width:100%; sm:width:auto; margin-top:12px; sm:margin-top:0;">' +
-              '<div>' +
-                '<p style="font-weight:700; font-size:14px; color:#d97706; margin:0;">' + fmtNum(u.points || 0) + ' Poin</p>' +
-                '<p style="font-size:10px; color:#94a3b8; margin:2px 0 0;">Daftar: ' + esc(fmtDate(u.created_at)) + '</p>' +
-              '</div>' +
-              '<div style="display:flex; gap:8px; width:100%; justify-content:flex-end;">' +
-                '<button onclick="openUserDetail(\'' + esc(u.id) + '\')" style="padding:8px 16px; border-radius:10px; font-size:12px; font-weight:700; background:#f1f5f9; color:#334155; border:none; cursor:pointer;">Detail</button>' +
-                '<button onclick="openUserPointsModal(\'' + esc(u.id) + '\',\'' + esc(u.email) + '\',' + (u.points || 0) + ')" style="padding:8px 16px; border-radius:10px; font-size:12px; font-weight:700; background:#fffbeb; color:#b45309; border:1px solid #fde68a; cursor:pointer;">Poin</button>' +
-              '</div>' +
-            '</div>' +
-          '</div>'
-        );
+        return `
+          <div class="admin-data-row">
+            <div class="admin-data-info">
+              <div class="admin-data-avatar">${esc((u.display_name || u.email).charAt(0).toUpperCase())}</div>
+              <div class="admin-data-text">
+                <p class="admin-data-title">${esc(u.email)}</p>
+                <div class="flex items-center gap-2 mt-1 flex-wrap">
+                  <span class="text-[11px] text-slate-500">${esc(u.display_name || '-')}</span>
+                  ${tierBadge} ${statusBadge}
+                </div>
+              </div>
+            </div>
+            <div class="flex flex-col items-end gap-2 shrink-0 w-full sm:w-auto mt-3 sm:mt-0">
+              <div class="text-right">
+                <p class="text-sm font-extrabold text-amber-600">${fmtNum(u.points || 0)} Poin</p>
+                <p class="text-[10px] text-slate-400">Daftar: ${esc(fmtDate(u.created_at))}</p>
+              </div>
+              <div class="flex gap-2 w-full sm:w-auto justify-end">
+                <button onclick="openUserDetail('${esc(u.id)}')" class="admin-btn-secondary" style="padding:6px 12px; font-size:11px;">Detail</button>
+                <button onclick="openUserPointsModal('${esc(u.id)}','${esc(u.email)}',${u.points || 0})" class="admin-btn-secondary" style="padding:6px 12px; font-size:11px; color:#d97706; border-color:#fde68a; background:#fffbeb;">Kelola Poin</button>
+              </div>
+            </div>
+          </div>`;
       }).join('');
 
       renderUsersPagination();
     } catch (err) {
-      wrap.innerHTML = '<div class="p-8 text-center text-xs text-red-500">' + esc(err.message) + '</div>';
+      wrap.innerHTML = `<div class="p-8 text-center text-xs text-red-500">${esc(err.message)}</div>`;
     }
   }
 
@@ -368,12 +335,12 @@
     const hasPrev = state.usersPage > 0;
     const hasNext = (state.usersPage + 1) * state.usersLimit < state.usersTotal;
 
-    wrap.innerHTML =
-      '<span style="font-size:12px; color:#64748b;">Menampilkan ' + (state.usersTotal ? start : 0) + '–' + end + ' dari ' + state.usersTotal + '</span>' +
-      '<div class="flex gap-1">' +
-        '<button onclick="changeUsersPage(-1)" ' + (!hasPrev ? 'disabled' : '') + ' class="admin-action-btn admin-action-btn-view" style="opacity:' + (hasPrev ? '1' : '0.4') + '; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; background:#f1f5f9; color:#334155; border:none;">Prev</button>' +
-        '<button onclick="changeUsersPage(1)" ' + (!hasNext ? 'disabled' : '') + ' class="admin-action-btn admin-action-btn-view" style="opacity:' + (hasNext ? '1' : '0.4') + '; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; background:#f1f5f9; color:#334155; border:none;">Next</button>' +
-      '</div>';
+    wrap.innerHTML = `
+      <span class="text-xs text-slate-500">Menampilkan ${state.usersTotal ? start : 0}–${end} dari ${state.usersTotal}</span>
+      <div class="flex gap-2">
+        <button onclick="changeUsersPage(-1)" ${!hasPrev ? 'disabled' : ''} class="admin-btn-secondary" style="padding:6px 12px; font-size:11px; opacity:${hasPrev ? '1' : '0.4'}">Prev</button>
+        <button onclick="changeUsersPage(1)" ${!hasNext ? 'disabled' : ''} class="admin-btn-secondary" style="padding:6px 12px; font-size:11px; opacity:${hasNext ? '1' : '0.4'}">Next</button>
+      </div>`;
   }
 
   function changeUsersPage(delta) {
@@ -385,14 +352,13 @@
   }
 
   function filterUsers() {
-    const f = $('user-filter')?.value || '';
-    state.usersFilter = f;
+    state.usersFilter = $('user-filter')?.value || '';
     state.usersPage = 0;
     loadUsers();
   }
 
   function searchUsers() {
-    state.usersSearch = ($('user-search')?.value || '').trim();
+    state.usersSearch = ($('user-search')?.value || '').trim().toLowerCase();
     loadUsers();
   }
 
@@ -411,40 +377,35 @@
       const u = res?.data || {};
       if ($('modal-user-email')) $('modal-user-email').textContent = u.email || '-';
 
-      const infoRow = function (label, value) {
-        return (
-          '<div class="flex items-center justify-between py-2 border-b border-slate-100">' +
-            '<span class="text-xs text-slate-500">' + esc(label) + '</span>' +
-            '<span class="text-xs font-semibold text-slate-800 text-right">' + value + '</span>' +
-          '</div>'
-        );
-      };
+      const infoRow = (label, value) => `
+        <div class="flex justify-between py-2 border-b border-slate-100">
+          <span class="text-xs text-slate-500">${esc(label)}</span>
+          <span class="text-xs font-semibold text-slate-800 text-right">${value}</span>
+        </div>`;
 
-      body.innerHTML =
-        '<div class="space-y-1 mb-4">' +
-          infoRow('Nama', esc(u.display_name || '-')) +
-          infoRow('Role', '<span class="admin-badge ' + (u.role === 'admin' || u.role === 'owner' ? 'admin-badge-amber' : 'admin-badge-gray') + '">' + esc((u.role || 'user').toUpperCase()) + '</span>') +
-          infoRow('Tier', '<span class="admin-badge ' + (u.tier === 'premium' ? 'admin-badge-amber' : 'admin-badge-gray') + '">' + esc((u.tier || 'free').toUpperCase()) + '</span>') +
-          infoRow('Email Verified', u.email_verified ? '<span class="text-emerald-600">Ya</span>' : '<span class="text-red-600">Tidak</span>') +
-          infoRow('Poin', '<span class="text-amber-600 font-bold">' + fmtNum(u.points || 0) + '</span>') +
-          infoRow('Login Count', fmtNum(u.login_count || 0)) +
-          infoRow('Last Login', esc(fmtDate(u.last_login))) +
-          infoRow('Daftar', esc(fmtDate(u.created_at))) +
-          infoRow('Signup IP', '<span class="font-mono-code">' + esc(u.signup_ip || '-') + '</span>') +
-          infoRow('Mailbox Aktif', fmtNum(u.mailbox_count || 0)) +
-          infoRow('Subdomain', fmtNum(u.subdomain_count || 0)) +
-          infoRow('Sesi Aktif', fmtNum(u.active_sessions || 0)) +
-        '</div>' +
-        '<div class="grid grid-cols-2 gap-2">' +
-          '<button onclick="openUserPointsModal(\'' + esc(u.id) + '\',\'' + esc(u.email) + '\',' + (u.points || 0) + ')" class="admin-btn-primary justify-center" style="width:100%;">Kelola Poin</button>' +
-          (u.banned
-            ? '<button onclick="submitUserUnban(\'' + esc(u.id) + '\')" class="admin-btn-secondary justify-center" style="width:100%;">Unban</button>'
-            : '<button onclick="openBanModal(\'' + esc(u.id) + '\',\'' + esc(u.email) + '\')" class="admin-btn-secondary justify-center" style="color:#b91c1c;border-color:#fecaca; width:100%;">Ban</button>'
-          ) +
-          '<button onclick="submitDeleteUser(\'' + esc(u.id) + '\',\'' + esc(u.email) + '\')" class="admin-btn-danger justify-center col-span-2" style="width:100%; margin-top:8px;">Hapus Akun Permanen</button>' +
-        '</div>';
+      body.innerHTML = `
+        <div class="space-y-1 mb-4">
+          ${infoRow('Nama', esc(u.display_name || '-'))}
+          ${infoRow('Role', `<span class="admin-badge ${u.role === 'admin' || u.role === 'owner' ? 'admin-badge-amber' : 'admin-badge-gray'}">${esc((u.role || 'user').toUpperCase())}</span>`)}
+          ${infoRow('Tier', `<span class="admin-badge ${u.tier === 'premium' ? 'admin-badge-amber' : 'admin-badge-gray'}">${esc((u.tier || 'free').toUpperCase())}</span>`)}
+          ${infoRow('Email Verified', u.email_verified ? '<span class="text-emerald-600">Ya</span>' : '<span class="text-red-600">Tidak</span>')}
+          ${infoRow('Poin', `<span class="text-amber-600 font-bold">${fmtNum(u.points || 0)}</span>`)}
+          ${infoRow('Login Count', fmtNum(u.login_count || 0))}
+          ${infoRow('Last Login', esc(fmtDate(u.last_login)))}
+          ${infoRow('Signup IP', `<span class="font-mono text-xs">${esc(u.signup_ip || '-')}</span>`)}
+          ${infoRow('Mailbox Aktif', fmtNum(u.mailbox_count || 0))}
+          ${infoRow('Subdomain', fmtNum(u.subdomain_count || 0))}
+          ${infoRow('Sesi Aktif', fmtNum(u.active_sessions || 0))}
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="openUserPointsModal('${esc(u.id)}','${esc(u.email)}',${u.points || 0})" class="admin-btn-primary justify-center" style="width:100%;">Kelola Poin</button>
+          ${u.banned
+            ? `<button onclick="submitUserUnban('${esc(u.id)}')" class="admin-btn-secondary justify-center" style="width:100%;">Unban</button>`
+            : `<button onclick="openBanModal('${esc(u.id)}','${esc(u.email)}')" class="admin-btn-secondary justify-center" style="color:#b91c1c;border-color:#fecaca; width:100%;">Ban</button>`}
+          <button onclick="submitDeleteUser('${esc(u.id)}','${esc(u.email)}')" class="admin-btn-danger justify-center col-span-2" style="width:100%; margin-top:8px;">Hapus Akun Permanen</button>
+        </div>`;
     } catch (err) {
-      body.innerHTML = '<p class="text-xs text-red-500 p-4">' + esc(err.message) + '</p>';
+      body.innerHTML = `<p class="text-xs text-red-500 p-4">${esc(err.message)}</p>`;
     }
   }
 
@@ -473,17 +434,12 @@
     try {
       const res = await apiFetch('/api/admin/web/users/' + encodeURIComponent(state.currentUserId) + '/points', {
         method: 'POST',
-        body: { delta: delta, reason: reason, admin_id: state.user?.email || 'admin' }
+        body: { delta, reason, admin_id: state.user?.email || 'admin' }
       });
       adminToast('Poin disesuaikan. Saldo baru: ' + fmtNum(res.data.balance_after), 'success');
       closeModal('modal-user-points');
-      
-      // Paksa refresh list user dan detail modal jika sedang terbuka
       loadUsers();
-      if (!$('modal-user-detail')?.classList.contains('hidden')) {
-        openUserDetail(state.currentUserId);
-      }
-
+      if (!$('modal-user-detail')?.classList.contains('hidden')) openUserDetail(state.currentUserId);
     } catch (err) {
       adminToast(err.message, 'error');
     } finally {
@@ -512,9 +468,9 @@
     try {
       await apiFetch('/api/admin/web/users/' + encodeURIComponent(state.currentUserId) + '/ban', {
         method: 'POST',
-        body: { reason: reason, duration_hours: duration }
+        body: { reason, duration_hours: duration }
       });
-      adminToast('User dibanned' + (duration > 0 ? ' selama ' + duration + ' jam' : ' permanen'), 'success');
+      adminToast('User dibanned', 'success');
       closeModal('modal-user-ban');
       closeModal('modal-user-detail');
       loadUsers();
@@ -562,7 +518,7 @@
 
   async function loadPointsLedger() {
     const tbody = $('ledger-tbody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center p-8"><div class="admin-skeleton h-12 w-full rounded-xl"></div></td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center p-8"><div class="admin-skeleton h-12 w-full rounded-xl"></div></td></tr>';
 
     try {
       const reason = $('ledger-reason')?.value || '';
@@ -574,32 +530,23 @@
       const txs = res?.data?.transactions || [];
 
       if (!txs.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-xs text-slate-400">Belum ada transaksi.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-xs text-slate-400">Belum ada transaksi.</td></tr>';
         return;
       }
 
-      tbody.innerHTML = txs.map(function (t) {
+      tbody.innerHTML = txs.map(t => {
         const isPlus = t.delta > 0;
-        let label = t.reason || 'transaksi';
-        if (t.reason === 'signup_bonus') label = 'Signup bonus';
-        else if (t.reason === 'create_pointing_subdomain') label = 'Create pointing';
-        else if (t.reason === 'create_termux_subdomain') label = 'Create termux';
-        else if (t.reason === 'admin_adjustment') label = 'Admin adjustment';
-        else if (t.reason === 'retroactive_signup_bonus') label = 'Retroactive bonus';
-
-        return (
-          '<tr>' +
-            '<td class="text-xs text-slate-500">' + esc(fmtRel(t.created_at)) + '</td>' +
-            '<td class="text-xs">' + esc(t.email || t.user_id) + '</td>' +
-            '<td class="font-bold ' + (isPlus ? 'text-emerald-600' : 'text-red-600') + '">' + (isPlus ? '+' : '') + fmtNum(t.delta) + '</td>' +
-            '<td class="font-semibold text-slate-800">' + fmtNum(t.balance_after) + '</td>' +
-            '<td class="text-xs">' + esc(label) + '</td>' +
-            '<td class="text-xs text-slate-500">' + esc(t.admin_id || '-') + '</td>' +
-          '</tr>'
-        );
+        return `
+          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+            <td class="p-4 text-xs text-slate-500">${esc(fmtRel(t.created_at))}</td>
+            <td class="p-4 text-xs font-semibold">${esc(t.email || t.user_id)}</td>
+            <td class="p-4 font-bold ${isPlus ? 'text-emerald-600' : 'text-red-600'}">${isPlus ? '+' : ''}${fmtNum(t.delta)}</td>
+            <td class="p-4 font-semibold text-slate-800">${fmtNum(t.balance_after)}</td>
+            <td class="p-4 text-xs text-slate-600">${esc(t.reason || '-')}</td>
+          </tr>`;
       }).join('');
     } catch (err) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-xs text-red-500">' + esc(err.message) + '</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-xs text-red-500">${esc(err.message)}</td></tr>`;
     }
   }
 
@@ -633,35 +580,32 @@
       const res = await apiFetch('/api/admin/web/config');
       const configArr = res?.data?.config || [];
       const map = {};
-      configArr.forEach(function (c) { map[c.key] = c.value; });
+      configArr.forEach(c => { map[c.key] = c.value; });
       state.configs = map;
 
       const groups = {};
-      CONFIG_KEYS.forEach(function (c) {
+      CONFIG_KEYS.forEach(c => {
         if (!groups[c.group]) groups[c.group] = [];
         groups[c.group].push(c);
       });
 
-      grid.innerHTML = Object.keys(groups).map(function (groupName) {
-        const fields = groups[groupName].map(function (c) {
+      grid.innerHTML = Object.keys(groups).map(groupName => {
+        const fields = groups[groupName].map(c => {
           const val = map[c.key] !== undefined ? map[c.key] : '';
-          return (
-            '<div class="admin-config-field">' +
-              '<label class="admin-field-label">' + esc(c.label) + '</label>' +
-              '<input type="text" data-config-key="' + esc(c.key) + '" value="' + esc(val) + '" class="admin-field-input" />' +
-              '<p class="admin-config-hint">key: ' + esc(c.key) + '</p>' +
-            '</div>'
-          );
+          return `
+            <div class="mb-3">
+              <label class="admin-field-label">${esc(c.label)}</label>
+              <input type="text" data-config-key="${esc(c.key)}" value="${esc(val)}" class="admin-field-input" />
+            </div>`;
         }).join('');
-        return (
-          '<div class="admin-config-group">' +
-            '<p class="admin-config-group-title">' + esc(groupName) + '</p>' +
-            fields +
-          '</div>'
-        );
+        return `
+          <div class="admin-card p-5">
+            <h3 class="text-sm font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">${esc(groupName)}</h3>
+            ${fields}
+          </div>`;
       }).join('');
     } catch (err) {
-      grid.innerHTML = '<p class="text-xs text-red-500 p-4">' + esc(err.message) + '</p>';
+      grid.innerHTML = `<p class="text-xs text-red-500 p-4">${esc(err.message)}</p>`;
     }
   }
 
@@ -669,7 +613,7 @@
     const inputs = $all('input[data-config-key]');
     const payload = {};
 
-    inputs.forEach(function (inp) {
+    inputs.forEach(inp => {
       const key = inp.getAttribute('data-config-key');
       const val = inp.value.trim();
       if (state.configs[key] !== val) {
@@ -707,8 +651,8 @@
   }
 
   async function loadVisitors() {
-    const tbody = $('visitors-tbody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center p-8"><div class="admin-skeleton h-12 w-full rounded-xl"></div></td></tr>';
+    const wrap = $('visitors-tbody');
+    if (wrap) wrap.innerHTML = '<div class="admin-skeleton h-16 w-full rounded-xl mb-3"></div><div class="admin-skeleton h-16 w-full rounded-xl"></div>';
 
     try {
       const res = await apiFetch('/api/admin/web/visitors?limit=100');
@@ -716,36 +660,40 @@
       state.visitors = visitors;
 
       if (!visitors.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-xs text-slate-400">Belum ada visitor.</td></tr>';
+        wrap.innerHTML = '<div class="p-8 text-center text-xs text-slate-400">Belum ada visitor.</div>';
         return;
       }
 
-      tbody.innerHTML = visitors.map(function (v) {
+      wrap.innerHTML = visitors.map(v => {
         let statusBadge = '<span class="admin-badge admin-badge-green">Normal</span>';
         if (v.banned) statusBadge = '<span class="admin-badge admin-badge-red">Banned</span>';
         else if (v.is_whitelist) statusBadge = '<span class="admin-badge admin-badge-amber">Whitelist</span>';
 
-        return (
-          '<tr>' +
-            '<td><span class="font-mono-code text-xs font-semibold">' + esc(v.ip) + '</span></td>' +
-            '<td class="text-[10px] font-mono-code text-slate-500 truncate max-w-[120px]">' + esc((v.fingerprint || '-').slice(0, 16)) + '</td>' +
-            '<td class="text-xs">' + fmtNum(v.mailbox_count_today || 0) + ' / ' + fmtNum(v.mailbox_count_total || 0) + '</td>' +
-            '<td>' + statusBadge + '</td>' +
-            '<td class="text-xs text-slate-500">' + esc(fmtRel(v.last_mailbox_at || v.updated_at)) + '</td>' +
-            '<td class="text-right">' +
-              '<div class="inline-flex gap-1">' +
-                (v.banned
-                  ? '<button onclick="submitUnblockIp(\'' + esc(v.ip) + '\')" class="admin-action-btn admin-action-btn-success" style="padding:4px 8px; font-size:11px;">Unblock</button>'
-                  : '<button onclick="submitBlockIpDirect(\'' + esc(v.ip) + '\')" class="admin-action-btn admin-action-btn-danger" style="padding:4px 8px; font-size:11px;">Block</button>'
-                ) +
-                '<button onclick="submitToggleWhitelist(\'' + esc(v.ip) + '\',' + (v.is_whitelist ? 0 : 1) + ')" class="admin-action-btn admin-action-btn-points" style="padding:4px 8px; font-size:11px;">' + (v.is_whitelist ? 'Unwhitelist' : 'Whitelist') + '</button>' +
-              '</div>' +
-            '</td>' +
-          '</tr>'
-        );
+        return `
+          <div class="admin-data-row" style="align-items:flex-start;">
+            <div style="display:flex; flex-direction:column; gap:4px; min-width:0;">
+              <p class="font-mono text-sm font-bold text-slate-900">${esc(v.ip)}</p>
+              <p class="text-[10px] text-slate-500 font-mono truncate max-w-[200px]">FP: ${esc((v.fingerprint || '-').slice(0, 16))}</p>
+              <div class="flex items-center gap-2 mt-1">
+                ${statusBadge}
+                <span class="text-[11px] text-slate-500">${fmtNum(v.mailbox_count_today || 0)} / ${fmtNum(v.mailbox_count_total || 0)} mailbox</span>
+              </div>
+            </div>
+            <div class="flex flex-col items-end gap-2 shrink-0 mt-3 sm:mt-0">
+              <p class="text-[10px] text-slate-400 mb-1">Terakhir: ${esc(fmtRel(v.last_mailbox_at || v.updated_at))}</p>
+              <div class="flex gap-2">
+                ${v.banned
+                  ? `<button onclick="submitUnblockIp('${esc(v.ip)}')" class="admin-btn-secondary" style="padding:6px 10px; font-size:11px; color:#059669;">Unblock</button>`
+                  : `<button onclick="submitBlockIpDirect('${esc(v.ip)}')" class="admin-btn-secondary" style="padding:6px 10px; font-size:11px; color:#b91c1c;">Block</button>`}
+                <button onclick="submitToggleWhitelist('${esc(v.ip)}',${v.is_whitelist ? 0 : 1})" class="admin-btn-secondary" style="padding:6px 10px; font-size:11px;">
+                  ${v.is_whitelist ? 'Unwhitelist' : 'Whitelist'}
+                </button>
+              </div>
+            </div>
+          </div>`;
       }).join('');
     } catch (err) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center p-8 text-xs text-red-500">' + esc(err.message) + '</td></tr>';
+      wrap.innerHTML = `<div class="p-8 text-center text-xs text-red-500">${esc(err.message)}</div>`;
     }
   }
 
@@ -768,10 +716,7 @@
 
     adminLoading(true);
     try {
-      await apiFetch('/api/admin/web/visitors/block', {
-        method: 'POST',
-        body: { ip: ip, reason: reason, duration_minutes: duration }
-      });
+      await apiFetch('/api/admin/web/visitors/block', { method: 'POST', body: { ip, reason, duration_minutes: duration } });
       adminToast('IP ' + ip + ' diblokir', 'success');
       closeModal('modal-block-ip');
       loadVisitors();
@@ -786,10 +731,7 @@
     if (!confirm('Block IP ' + ip + ' permanent?')) return;
     adminLoading(true);
     try {
-      await apiFetch('/api/admin/web/visitors/block', {
-        method: 'POST',
-        body: { ip: ip, reason: 'Blocked by admin', duration_minutes: 0 }
-      });
+      await apiFetch('/api/admin/web/visitors/block', { method: 'POST', body: { ip, reason: 'Blocked by admin', duration_minutes: 0 } });
       adminToast('IP diblokir', 'success');
       loadVisitors();
     } catch (err) {
@@ -802,10 +744,7 @@
   async function submitUnblockIp(ip) {
     adminLoading(true);
     try {
-      await apiFetch('/api/admin/web/visitors/unblock', {
-        method: 'POST',
-        body: { ip: ip }
-      });
+      await apiFetch('/api/admin/web/visitors/unblock', { method: 'POST', body: { ip } });
       adminToast('IP di-unblock', 'success');
       loadVisitors();
     } catch (err) {
@@ -818,10 +757,7 @@
   async function submitToggleWhitelist(ip, enabled) {
     adminLoading(true);
     try {
-      await apiFetch('/api/admin/web/visitors/whitelist', {
-        method: 'POST',
-        body: { ip: ip, enabled: !!enabled }
-      });
+      await apiFetch('/api/admin/web/visitors/whitelist', { method: 'POST', body: { ip, enabled: !!enabled } });
       adminToast('Whitelist diupdate', 'success');
       loadVisitors();
     } catch (err) {
@@ -847,13 +783,13 @@
     const searchInput = $('user-search');
     if (searchInput) {
       let debounce;
-      searchInput.addEventListener('input', function () {
+      searchInput.addEventListener('input', () => {
         clearTimeout(debounce);
         debounce = setTimeout(searchUsers, 350);
       });
     }
 
-    document.addEventListener('keydown', function (e) {
+    document.addEventListener('keydown', e => {
       if (e.key === 'Escape') {
         closeModal('modal-user-detail');
         closeModal('modal-user-points');
