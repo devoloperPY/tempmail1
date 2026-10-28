@@ -129,25 +129,25 @@
     if (window.lucide) window.lucide.createIcons();
   }
 
-  async function loadUser() {
-    try {
-      const res = await apiFetch('/api/web/auth/me');
-      if (!res?.data?.user) {
-        clearToken();
-        window.location.replace('login.html');
-        return false;
-      }
-      state.user = res.data.user;
-      state.sessionId = res.data.session_id;
-      setToken(getToken(), state.user);
-      renderUser();
-      return true;
-    } catch (err) {
+async function loadUser() {
+  try {
+    const res = await apiFetch('/api/web/auth/me', { cache: 'no-store' });
+    if (!res?.data?.user) {
       clearToken();
       window.location.replace('login.html');
       return false;
     }
+    state.user = res.data.user;
+    state.sessionId = res.data.session_id;
+    setToken(getToken(), state.user);
+    renderUser();
+    return true;
+  } catch (err) {
+    clearToken();
+    window.location.replace('login.html');
+    return false;
   }
+}
 
   function renderUser() {
     const u = state.user;
@@ -234,6 +234,19 @@
       loadSubdomainsSummary()
     ]);
   }
+  
+async function loadConfigCost() {
+  try {
+    const res = await apiFetch('/api/web/config');
+    const cfg = res?.data || {};
+    const cost = cfg.subdomain_pointing_cost || 500;
+    
+    if ($('quick-cost')) $('quick-cost').textContent = fmtNum(cost);
+    if ($('modal-cost')) $('modal-cost').textContent = fmtNum(cost);
+  } catch (e) {
+    console.log('Gagal memuat config cost:', e);
+  }
+}
 
   async function loadSubdomainsSummary() {
     try {
@@ -1134,26 +1147,27 @@ function handleClearCache() {
     });
   }
 
-  async function init() {
-    if (!isLoggedIn()) {
-      window.location.replace('login.html');
-      return;
-    }
-    if (window.lucide) window.lucide.createIcons();
-    bindEvents();
-
-    const ok = await loadUser();
-    if (!ok) return;
-
-    await loadOverview();
-    if (state.initialized) return;
-    state.initialized = true;
-
-    const hashView = (window.location.hash || '').replace('#', '');
-    if (hashView && $('view-' + hashView)) {
-      switchView(hashView);
-    }
+async function init() {
+  if (!isLoggedIn()) {
+    window.location.replace('login.html');
+    return;
   }
+  if (window.lucide) window.lucide.createIcons();
+  bindEvents();
+
+  const ok = await loadUser();
+  if (!ok) return;
+
+  await loadConfigCost();
+  await loadOverview();
+  if (state.initialized) return;
+  state.initialized = true;
+
+  const hashView = (window.location.hash || '').replace('#', '');
+  if (hashView && $('view-' + hashView)) {
+    switchView(hashView);
+  }
+}
 
   window.Dashboard = {
     switchView: switchView,
