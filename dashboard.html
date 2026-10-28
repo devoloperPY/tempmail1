@@ -1,3 +1,5 @@
+dashboard.html
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -191,7 +193,7 @@
           <div class="dash-action-icon dash-stat-icon-emerald"><i data-lucide="plus-circle" class="w-4 h-4"></i></div>
           <div class="min-w-0 flex-1 text-left">
             <p class="text-xs font-bold text-slate-900">Buat Subdomain</p>
-            <p class="text-[11px] text-slate-500">Pointing / Termux · 500 poin</p>
+            <p class="text-[11px] text-slate-500">Pointing / Termux · <span id="quick-cost">500</span> poin</p>
           </div>
           <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
         </button>
@@ -542,7 +544,7 @@
     <div class="p-4 space-y-3 overflow-y-auto flex-1 dash-scroll">
       <div class="p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-[11px] text-blue-800 flex items-center gap-2">
         <i data-lucide="info" class="w-3.5 h-3.5 shrink-0"></i>
-        <span>Biaya: <strong>500 poin</strong> &middot; Saldo lo: <strong id="cs-balance">0</strong> poin</span>
+        <span>Biaya: <strong id="modal-cost">500</strong> poin &middot; Saldo lo: <strong id="cs-balance">0</strong> poin</span>
       </div>
 
       <div id="form-pointing" class="space-y-3">
@@ -718,3 +720,6 @@
 <script src="assets/dashboard.js"></script>
 </body>
 </html>
+
+
+
