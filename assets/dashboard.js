@@ -1,17 +1,21 @@
 (function () {
   'use strict';
 
-  const state = {
-    user: null,
-    sessionId: null,
-    subdomains: [],
-    currentSubdomain: null,
-    currentDnsEdit: null,
-    currentFilter: 'all',
-    createKind: 'pointing',
-    expandedId: null,
-    initialized: false
-  };
+const state = {
+  user: null,
+  sessionId: null,
+  subdomains: [],
+  config: {
+    pointingCost: 500,
+    termuxCost: 500
+  },
+  currentSubdomain: null,
+  currentDnsEdit: null,
+  currentFilter: 'all',
+  createKind: 'pointing',
+  expandedId: null,
+  initialized: false
+};
 
   function $(id) {
     return document.getElementById(id);
@@ -239,8 +243,15 @@ async function loadConfigCost() {
   try {
     const res = await apiFetch('/api/web/config');
     const cfg = res?.data || {};
-    const cost = cfg.subdomain_pointing_cost || 500;
     
+    state.config = {
+      ...state.config,
+      ...cfg,
+      pointingCost: parseInt(cfg.subdomain_pointing_cost) || 500,
+      termuxCost: parseInt(cfg.subdomain_termux_cost) || 500
+    };
+    
+    const cost = state.config.pointingCost;
     if ($('quick-cost')) $('quick-cost').textContent = fmtNum(cost);
     if ($('modal-cost')) $('modal-cost').textContent = fmtNum(cost);
   } catch (e) {
@@ -248,24 +259,27 @@ async function loadConfigCost() {
   }
 }
 
-  async function loadSubdomainsSummary() {
-    try {
-      const res = await apiFetch('/api/web/user/subdomains');
-      const subs = res?.data?.subdomains || [];
-      const active = subs.filter(function (s) {
-        return s.status !== 'blocked';
-      }).length;
-      const max = state.user?.tier === 'premium' ? 20 : 3;
+async function loadSubdomainsSummary() {
+  try {
+    const res = await apiFetch('/api/web/user/subdomains');
+    const subs = res?.data?.subdomains || [];
+    const active = subs.filter(function (s) {
+      return s.status !== 'blocked';
+    }).length;
+    
+    const max = state.user?.tier === 'premium' 
+      ? (parseInt(state.config.premium_max_active_subdomain) || 20)
+      : (parseInt(state.config.free_max_active_subdomain) || 3);
 
-      if ($('ov-subdomain')) $('ov-subdomain').textContent = active;
-      if ($('ov-subdomain-max')) $('ov-subdomain-max').textContent = max;
-      if ($('nav-subdomain-count')) $('nav-subdomain-count').textContent = active + '/' + max + ' subdomain';
-      if ($('nav-subdomain-badge')) $('nav-subdomain-badge').textContent = active;
-      if ($('sd-active')) $('sd-active').textContent = active;
-      if ($('sd-max')) $('sd-max').textContent = max;
-      if ($('sd-points')) $('sd-points').textContent = fmtNum(state.user?.points || 0);
-    } catch (e) {}
-  }
+    if ($('ov-subdomain')) $('ov-subdomain').textContent = active;
+    if ($('ov-subdomain-max')) $('ov-subdomain-max').textContent = max;
+    if ($('nav-subdomain-count')) $('nav-subdomain-count').textContent = active + '/' + max + ' subdomain';
+    if ($('nav-subdomain-badge')) $('nav-subdomain-badge').textContent = active;
+    if ($('sd-active')) $('sd-active').textContent = active;
+    if ($('sd-max')) $('sd-max').textContent = max;
+    if ($('sd-points')) $('sd-points').textContent = fmtNum(state.user?.points || 0);
+  } catch (e) {}
+}
 
   async function loadSubdomains() {
     const list = $('sd-list');
@@ -667,32 +681,36 @@ async function loadConfigCost() {
     }
   }
 
-  function openCreateSubdomainModal() {
-    const modal = $('create-subdomain-modal');
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    if ($('cs-balance')) $('cs-balance').textContent = fmtNum(state.user?.points || 0);
-    switchCreateTab('pointing');
-  }
+function openCreateSubdomainModal() {
+  const modal = $('create-subdomain-modal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  if ($('cs-balance')) $('cs-balance').textContent = fmtNum(state.user?.points || 0);
+  
+  switchCreateTab('pointing'); 
+}
 
   function closeCreateSubdomainModal() {
     const modal = $('create-subdomain-modal');
     if (modal) modal.classList.add('hidden');
   }
 
-  function switchCreateTab(kind) {
-    state.createKind = kind;
-    ['pointing', 'termux'].forEach(function (t) {
-      const btn = $('create-tab-' + t);
-      const form = $('form-' + t);
-      if (btn) btn.classList.remove('active');
-      if (form) form.classList.add('hidden');
-    });
-    const btn = $('create-tab-' + kind);
-    const form = $('form-' + kind);
-    if (btn) btn.classList.add('active');
-    if (form) form.classList.remove('hidden');
-  }
+function switchCreateTab(kind) {
+  state.createKind = kind;
+  ['pointing', 'termux'].forEach(function (t) {
+    const btn = $('create-tab-' + t);
+    const form = $('form-' + t);
+    if (btn) btn.classList.remove('active');
+    if (form) form.classList.add('hidden');
+  });
+  const btn = $('create-tab-' + kind);
+  const form = $('form-' + kind);
+  if (btn) btn.classList.add('active');
+  if (form) form.classList.remove('hidden');
+
+  const cost = kind === 'termux' ? (state.config.termuxCost || 500) : (state.config.pointingCost || 500);
+  if ($('modal-cost')) $('modal-cost').textContent = fmtNum(cost);
+}
 
   async function submitCreateSubdomain() {
     const kind = state.createKind;
