@@ -550,26 +550,36 @@
     }
   }
 
-  const CONFIG_KEYS = [
-    { key: 'signup_bonus_points', label: 'Bonus Signup (poin)', group: 'Poin & Subdomain' },
-    { key: 'subdomain_pointing_cost', label: 'Biaya Subdomain Pointing (poin)', group: 'Poin & Subdomain' },
-    { key: 'subdomain_termux_cost', label: 'Biaya Subdomain Termux (poin)', group: 'Poin & Subdomain' },
-    { key: 'free_max_active_subdomain', label: 'Max Subdomain Aktif (Free)', group: 'Poin & Subdomain' },
-    { key: 'premium_max_active_subdomain', label: 'Max Subdomain Aktif (Premium)', group: 'Poin & Subdomain' },
-    { key: 'max_mailbox_per_ip_day', label: 'Max Mailbox per IP/hari', group: 'Mailbox' },
-    { key: 'mailbox_duration_minutes', label: 'Durasi Mailbox (menit)', group: 'Mailbox' },
-    { key: 'max_messages_per_mailbox', label: 'Max Pesan per Mailbox', group: 'Mailbox' },
-    { key: 'max_concurrent_mailbox', label: 'Max Mailbox Aktif per User', group: 'Mailbox' },
-    { key: 'global_max_mailbox_per_day', label: 'Global Max Mailbox/hari', group: 'Mailbox' },
-    { key: 'max_accounts_per_ip', label: 'Max Akun per IP', group: 'Keamanan' },
-    { key: 'max_accounts_per_device', label: 'Max Akun per Device', group: 'Keamanan' },
-    { key: 'captcha_enabled', label: 'Captcha Aktif (1/0)', group: 'Keamanan' },
-    { key: 'email_whitelist_enabled', label: 'Whitelist Provider Aktif (1/0)', group: 'Keamanan' },
-    { key: 'maintenance_mode', label: 'Mode Maintenance (1/0)', group: 'Sistem' },
-    { key: 'web_enabled', label: 'Web Aktif (1/0)', group: 'Sistem' },
-    { key: 'require_login', label: 'Wajib Login (1/0)', group: 'Sistem' },
-    { key: 'broadcast_banner', label: 'Broadcast Banner', group: 'Sistem' }
-  ];
+const CONFIG_KEYS = [
+  { key: 'signup_bonus_points', label: 'Bonus Signup (poin)', group: 'Poin & Subdomain' },
+  { key: 'subdomain_pointing_cost', label: 'Biaya Subdomain Pointing (poin)', group: 'Poin & Subdomain' },
+  { key: 'subdomain_termux_cost', label: 'Biaya Subdomain Termux (poin)', group: 'Poin & Subdomain' },
+  { key: 'free_max_active_subdomain', label: 'Max Subdomain Aktif (Free)', group: 'Poin & Subdomain' },
+  { key: 'premium_max_active_subdomain', label: 'Max Subdomain Aktif (Premium)', group: 'Poin & Subdomain' },
+  { key: 'max_mailbox_per_ip_day', label: 'Max Mailbox per IP/hari', group: 'Mailbox' },
+  { key: 'mailbox_duration_minutes', label: 'Durasi Mailbox (menit)', group: 'Mailbox' },
+  { key: 'max_messages_per_mailbox', label: 'Max Pesan per Mailbox', group: 'Mailbox' },
+  { key: 'max_concurrent_mailbox', label: 'Max Mailbox Aktif per User', group: 'Mailbox' },
+  { key: 'global_max_mailbox_per_day', label: 'Global Max Mailbox/hari', group: 'Mailbox' },
+  
+  // --- TAMBAHKAN 6 BARIS INI ---
+  { key: 'free_user_daily_limit', label: 'Free: Limit Mailbox/Hari', group: 'User Tiers' },
+  { key: 'free_user_mailbox_duration', label: 'Free: Durasi Mailbox (menit)', group: 'User Tiers' },
+  { key: 'free_user_max_messages', label: 'Free: Max Pesan', group: 'User Tiers' },
+  { key: 'premium_user_daily_limit', label: 'Premium: Limit Mailbox/Hari', group: 'User Tiers' },
+  { key: 'premium_user_mailbox_duration', label: 'Premium: Durasi Mailbox (menit)', group: 'User Tiers' },
+  { key: 'premium_user_max_messages', label: 'Premium: Max Pesan', group: 'User Tiers' },
+  // -----------------------------
+
+  { key: 'max_accounts_per_ip', label: 'Max Akun per IP', group: 'Keamanan' },
+  { key: 'max_accounts_per_device', label: 'Max Akun per Device', group: 'Keamanan' },
+  { key: 'captcha_enabled', label: 'Captcha Aktif (1/0)', group: 'Keamanan' },
+  { key: 'email_whitelist_enabled', label: 'Whitelist Provider Aktif (1/0)', group: 'Keamanan' },
+  { key: 'maintenance_mode', label: 'Mode Maintenance (1/0)', group: 'Sistem' },
+  { key: 'web_enabled', label: 'Web Aktif (1/0)', group: 'Sistem' },
+  { key: 'require_login', label: 'Wajib Login (1/0)', group: 'Sistem' },
+  { key: 'broadcast_banner', label: 'Broadcast Banner', group: 'Sistem' }
+];
 
   async function loadConfig() {
     const grid = $('config-grid');
