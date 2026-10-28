@@ -14,105 +14,70 @@
 <aside id="admin-sidebar" class="admin-sidebar">
   <div class="admin-sidebar-head">
     <div class="flex items-center gap-2.5">
-      <div class="admin-brand-icon">
-        <i data-lucide="shield-check" class="w-4 h-4"></i>
-      </div>
+      <div class="admin-brand-icon"><i data-lucide="shield-check" class="w-4 h-4"></i></div>
       <div>
         <p class="admin-brand-title">Sigit Admin</p>
         <p class="admin-brand-sub">Control Panel</p>
       </div>
     </div>
-    <button onclick="toggleAdminSidebar()" class="admin-icon-btn-light md:hidden" aria-label="Tutup">
-      <i data-lucide="x" class="w-4 h-4"></i>
-    </button>
   </div>
-
   <nav class="admin-nav">
-    <div class="admin-nav-group">Menu</div>
+    <div class="admin-nav-group">Menu Utama</div>
     <a onclick="adminSwitchView('overview', event)" data-view="overview" class="admin-nav-item active">
-      <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
-      <span>Overview</span>
+      <i data-lucide="layout-dashboard" class="w-4 h-4"></i><span>Overview</span>
     </a>
     <a onclick="adminSwitchView('users', event)" data-view="users" class="admin-nav-item">
-      <i data-lucide="users" class="w-4 h-4"></i>
-      <span>Pengguna</span>
+      <i data-lucide="users" class="w-4 h-4"></i><span>Pengguna</span>
       <span class="admin-nav-badge" id="nav-user-count">0</span>
     </a>
     <a onclick="adminSwitchView('points', event)" data-view="points" class="admin-nav-item">
-      <i data-lucide="coins" class="w-4 h-4"></i>
-      <span>Poin Ledger</span>
+      <i data-lucide="coins" class="w-4 h-4"></i><span>Poin Ledger</span>
     </a>
     <a onclick="adminSwitchView('config', event)" data-view="config" class="admin-nav-item">
-      <i data-lucide="sliders" class="w-4 h-4"></i>
-      <span>Konfigurasi</span>
+      <i data-lucide="sliders" class="w-4 h-4"></i><span>Konfigurasi</span>
     </a>
     <a onclick="adminSwitchView('visitors', event)" data-view="visitors" class="admin-nav-item">
-      <i data-lucide="fingerprint" class="w-4 h-4"></i>
-      <span>Visitor &amp; IP</span>
+      <i data-lucide="fingerprint" class="w-4 h-4"></i><span>Visitor & IP</span>
     </a>
   </nav>
-
   <div class="admin-sidebar-foot">
-    <div class="admin-user-card">
-      <div class="admin-avatar" id="admin-avatar">A</div>
-      <div class="min-w-0 flex-1">
-        <p class="text-xs font-bold text-white truncate" id="admin-name">Admin</p>
-        <p class="text-[10px] text-slate-400 truncate" id="admin-email">-</p>
-      </div>
-    </div>
     <button onclick="adminLogout()" class="admin-logout-btn">
-      <i data-lucide="log-out" class="w-4 h-4"></i>
-      <span>Logout</span>
+      <i data-lucide="log-out" class="w-4 h-4"></i><span>Logout</span>
     </button>
   </div>
 </aside>
 
-<div id="admin-sidebar-overlay" onclick="toggleAdminSidebar()" class="admin-overlay hidden"></div>
+<div id="admin-sidebar-overlay" onclick="toggleAdminSidebar()" class="fixed inset-0 bg-slate-900/50 z-50 hidden"></div>
 
 <main class="admin-main">
   <header class="admin-topbar">
     <div class="flex items-center gap-3">
-      <button onclick="toggleAdminSidebar()" class="admin-icon-btn-light md:hidden">
-        <i data-lucide="menu" class="w-5 h-5"></i>
-      </button>
+      <button onclick="toggleAdminSidebar()" class="md:hidden p-2 text-slate-600"><i data-lucide="menu" class="w-5 h-5"></i></button>
       <div>
         <p class="admin-topbar-title" id="topbar-title">Overview</p>
         <p class="admin-topbar-sub" id="topbar-sub">Ringkasan platform</p>
       </div>
     </div>
     <div class="flex items-center gap-2">
-      <button onclick="adminSwitchView('users')" class="admin-quick-btn">
-        <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
-        <span>Kelola User</span>
-      </button>
-      <a href="dashboard.html" target="_blank" class="admin-quick-btn admin-quick-btn-secondary">
-        <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-        <span class="hidden sm:inline">Buka Dashboard</span>
-      </a>
+      <a href="dashboard.html" target="_blank" class="admin-btn-secondary"><i data-lucide="external-link" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">Buka Web</span></a>
     </div>
   </header>
 
   <div class="admin-content">
-
-    <!-- VIEW OVERVIEW -->
     <section id="admin-view-overview" class="admin-view active">
-      <div class="admin-hero">
+      <div class="flex justify-between items-end mb-6">
         <div>
-          <p class="admin-eyebrow">CONTROL PANEL</p>
-          <h1 class="admin-title">Overview Platform</h1>
-          <p class="admin-subtitle">Statistik real-time seluruh aktivitas.</p>
+          <h1 class="text-2xl font-black text-slate-900">Overview Platform</h1>
+          <p class="text-sm text-slate-500 mt-1">Statistik real-time seluruh aktivitas.</p>
         </div>
-        <button onclick="loadOverview()" class="admin-btn-primary">
-          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-          Refresh
-        </button>
+        <button onclick="loadOverview()" class="admin-btn-primary"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh</button>
       </div>
 
-      <div class="admin-stat-grid" id="admin-stat-grid">
+      <div class="admin-stat-grid">
         <div class="admin-stat-card">
           <div class="admin-stat-head">
             <span class="admin-stat-label">Total User</span>
-            <div class="admin-stat-icon admin-stat-icon-blue"><i data-lucide="users" class="w-4 h-4"></i></div>
+            <div class="admin-stat-icon admin-stat-icon-blue"><i data-lucide="users" class="w-5 h-5"></i></div>
           </div>
           <p class="admin-stat-value" id="stat-users">-</p>
           <p class="admin-stat-hint" id="stat-users-hint">-</p>
@@ -120,7 +85,7 @@
         <div class="admin-stat-card">
           <div class="admin-stat-head">
             <span class="admin-stat-label">Total Mailbox</span>
-            <div class="admin-stat-icon admin-stat-icon-purple"><i data-lucide="inbox" class="w-4 h-4"></i></div>
+            <div class="admin-stat-icon admin-stat-icon-purple"><i data-lucide="inbox" class="w-5 h-5"></i></div>
           </div>
           <p class="admin-stat-value" id="stat-mailboxes">-</p>
           <p class="admin-stat-hint" id="stat-mailboxes-hint">-</p>
@@ -128,7 +93,7 @@
         <div class="admin-stat-card">
           <div class="admin-stat-head">
             <span class="admin-stat-label">Total Subdomain</span>
-            <div class="admin-stat-icon admin-stat-icon-emerald"><i data-lucide="globe" class="w-4 h-4"></i></div>
+            <div class="admin-stat-icon admin-stat-icon-emerald"><i data-lucide="globe" class="w-5 h-5"></i></div>
           </div>
           <p class="admin-stat-value" id="stat-subdomains">-</p>
           <p class="admin-stat-hint" id="stat-subdomains-hint">-</p>
@@ -136,7 +101,7 @@
         <div class="admin-stat-card">
           <div class="admin-stat-head">
             <span class="admin-stat-label">Poin Beredar</span>
-            <div class="admin-stat-icon admin-stat-icon-amber"><i data-lucide="coins" class="w-4 h-4"></i></div>
+            <div class="admin-stat-icon admin-stat-icon-amber"><i data-lucide="coins" class="w-5 h-5"></i></div>
           </div>
           <p class="admin-stat-value" id="stat-points">-</p>
           <p class="admin-stat-hint" id="stat-points-hint">-</p>
@@ -146,282 +111,187 @@
       <div class="admin-two-col">
         <div class="admin-card">
           <div class="admin-card-head">
-            <h3 class="admin-card-title">Pertumbuhan User</h3>
-            <span class="admin-badge admin-badge-blue">7 Hari</span>
-          </div>
-          <div class="admin-chart-placeholder" id="users-timeline">
-            <div class="admin-skeleton h-32 w-full rounded-xl"></div>
-          </div>
-        </div>
-        <div class="admin-card">
-          <div class="admin-card-head">
             <h3 class="admin-card-title">Aktivitas Terbaru</h3>
-            <button onclick="adminSwitchView('points')" class="admin-link-btn">Lihat Ledger</button>
+            <button onclick="adminSwitchView('points')" class="text-[11px] font-bold text-blue-600">Lihat Ledger</button>
           </div>
-          <div id="recent-activity" class="space-y-1">
-            <div class="admin-skeleton h-14 w-full rounded-xl mb-2"></div>
-            <div class="admin-skeleton h-14 w-full rounded-xl mb-2"></div>
-            <div class="admin-skeleton h-14 w-full rounded-xl"></div>
-          </div>
+          <div id="recent-activity" class="p-4 space-y-2"></div>
         </div>
       </div>
     </section>
 
-    <!-- VIEW USERS (CARD LIST) -->
     <section id="admin-view-users" class="admin-view">
-      <div class="admin-hero">
+      <div class="flex justify-between items-end mb-6">
         <div>
-          <p class="admin-eyebrow">PENGGUNA</p>
-          <h1 class="admin-title">Kelola Pengguna</h1>
-          <p class="admin-subtitle">Cari, edit, dan kelola semua akun terdaftar.</p>
+          <h1 class="text-2xl font-black text-slate-900">Kelola Pengguna</h1>
+          <p class="text-sm text-slate-500 mt-1">Cari, edit, dan kelola semua akun.</p>
         </div>
       </div>
 
-      <div class="admin-filter-bar">
-        <div class="admin-search-wrap">
-          <i data-lucide="search" class="w-4 h-4 admin-search-icon"></i>
-          <input type="text" id="user-search" placeholder="Cari email atau nama..." class="admin-search-input" />
-        </div>
-        <select id="user-filter" class="admin-select">
+      <div class="flex flex-wrap gap-2 mb-6">
+        <input type="text" id="user-search" placeholder="Cari email..." class="admin-field-input flex-1 min-w-[200px]" />
+        <select id="user-filter" class="admin-field-input w-auto">
           <option value="">Semua Status</option>
           <option value="unverified">Belum Verifikasi</option>
           <option value="banned">Dibanned</option>
           <option value="premium">Premium</option>
         </select>
-        <button onclick="loadUsers()" class="admin-btn-secondary">
-          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-          Refresh
-        </button>
+        <button onclick="loadUsers()" class="admin-btn-secondary"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i></button>
       </div>
 
-      <div class="admin-card overflow-hidden" style="padding: 16px;">
-        <!-- Container untuk Card List -->
-        <div id="users-tbody" class="admin-data-list">
-          <div class="admin-skeleton h-16 w-full rounded-xl mb-3"></div>
-          <div class="admin-skeleton h-16 w-full rounded-xl"></div>
-        </div>
-        <div class="admin-pagination" id="users-pagination" style="padding-top: 16px; margin-top: 8px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;"></div>
+      <div class="admin-card">
+        <div id="users-tbody" class="admin-data-list"></div>
+        <div id="users-pagination" class="p-4 border-t border-slate-100 flex justify-between items-center bg-slate-50"></div>
       </div>
     </section>
 
-    <!-- VIEW POINTS LEDGER -->
     <section id="admin-view-points" class="admin-view">
-      <div class="admin-hero">
+      <div class="flex justify-between items-end mb-6">
         <div>
-          <p class="admin-eyebrow">KEUANGAN</p>
-          <h1 class="admin-title">Poin Ledger</h1>
-          <p class="admin-subtitle">Semua transaksi poin di platform.</p>
+          <h1 class="text-2xl font-black text-slate-900">Poin Ledger</h1>
+          <p class="text-sm text-slate-500 mt-1">Semua transaksi poin di platform.</p>
         </div>
-        <button onclick="loadPointsLedger()" class="admin-btn-primary">
-          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-          Refresh
-        </button>
+        <button onclick="loadPointsLedger()" class="admin-btn-primary"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Refresh</button>
       </div>
-
-      <div class="admin-filter-bar">
-        <select id="ledger-reason" class="admin-select" onchange="loadPointsLedger()">
-          <option value="">Semua Alasan</option>
-          <option value="signup_bonus">Signup Bonus</option>
-          <option value="create_pointing_subdomain">Create Pointing Subdomain</option>
-          <option value="create_termux_subdomain">Create Termux Subdomain</option>
-          <option value="admin_adjustment">Admin Adjustment</option>
-          <option value="retroactive_signup_bonus">Retroactive Bonus</option>
-        </select>
-      </div>
-
       <div class="admin-card overflow-hidden">
         <div class="overflow-x-auto">
-          <table class="admin-table">
-            <thead>
+          <table class="w-full text-sm text-left">
+            <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-xs font-bold">
               <tr>
-                <th>Waktu</th>
-                <th>User</th>
-                <th>Delta</th>
-                <th>Saldo Akhir</th>
-                <th>Alasan</th>
-                <th>Oleh</th>
+                <th class="p-4">Waktu</th>
+                <th class="p-4">User</th>
+                <th class="p-4">Delta</th>
+                <th class="p-4">Saldo Akhir</th>
+                <th class="p-4">Alasan</th>
               </tr>
             </thead>
-            <tbody id="ledger-tbody">
-              <tr><td colspan="6" class="text-center p-8"><div class="admin-skeleton h-12 w-full rounded-xl"></div></td></tr>
-            </tbody>
+            <tbody id="ledger-tbody" class="divide-y divide-slate-100"></tbody>
           </table>
         </div>
       </div>
     </section>
 
-    <!-- VIEW CONFIG -->
     <section id="admin-view-config" class="admin-view">
-      <div class="admin-hero">
+      <div class="flex justify-between items-end mb-6">
         <div>
-          <p class="admin-eyebrow">PENGATURAN</p>
-          <h1 class="admin-title">Konfigurasi Platform</h1>
-          <p class="admin-subtitle">Ubah harga, limit, dan settings sistem.</p>
+          <h1 class="text-2xl font-black text-slate-900">Konfigurasi</h1>
+          <p class="text-sm text-slate-500 mt-1">Ubah harga, limit, dan sistem.</p>
         </div>
-        <button onclick="saveConfig()" class="admin-btn-primary">
-          <i data-lucide="save" class="w-3.5 h-3.5"></i>
-          Simpan Semua
-        </button>
+        <button onclick="saveConfig()" class="admin-btn-primary"><i data-lucide="save" class="w-3.5 h-3.5"></i> Simpan Semua</button>
       </div>
-
-      <div class="admin-config-grid" id="config-grid">
-        <div class="admin-skeleton h-24 w-full rounded-xl"></div>
-        <div class="admin-skeleton h-24 w-full rounded-xl"></div>
-      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="config-grid"></div>
     </section>
 
-    <!-- VIEW VISITORS -->
     <section id="admin-view-visitors" class="admin-view">
-      <div class="admin-hero">
+      <div class="flex justify-between items-end mb-6">
         <div>
-          <p class="admin-eyebrow">KEAMANAN</p>
-          <h1 class="admin-title">Visitor &amp; IP</h1>
-          <p class="admin-subtitle">Block, whitelist, dan monitor visitor.</p>
+          <h1 class="text-2xl font-black text-slate-900">Visitor & IP</h1>
+          <p class="text-sm text-slate-500 mt-1">Monitor dan kelola visitor.</p>
         </div>
-        <div class="flex gap-2">
-          <button onclick="openBlockIpModal()" class="admin-btn-secondary">
-            <i data-lucide="ban" class="w-3.5 h-3.5"></i>
-            Block IP
-          </button>
-          <button onclick="loadVisitors()" class="admin-btn-primary">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-            Refresh
-          </button>
-        </div>
+        <button onclick="openBlockIpModal()" class="admin-btn-secondary"><i data-lucide="ban" class="w-3.5 h-3.5"></i> Block IP</button>
       </div>
-
-      <div class="admin-card overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>IP</th>
-                <th>Fingerprint</th>
-                <th>Mailbox (hari/total)</th>
-                <th>Status</th>
-                <th>Terakhir</th>
-                <th class="text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="visitors-tbody">
-              <tr><td colspan="6" class="text-center p-8"><div class="admin-skeleton h-12 w-full rounded-xl"></div></td></tr>
-            </tbody>
-          </table>
-        </div>
+      <div class="admin-card">
+        <div id="visitors-tbody" class="admin-data-list"></div>
       </div>
     </section>
-
   </div>
 </main>
 
-<!-- MODAL USER DETAIL -->
-<div id="modal-user-detail" class="admin-modal hidden">
-  <div class="admin-modal-card">
-    <div class="admin-modal-head">
+<div id="modal-user-detail" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
       <div>
-        <h3 class="admin-modal-title">Detail Pengguna</h3>
-        <p class="admin-modal-sub" id="modal-user-email">-</p>
+        <h3 class="font-bold text-slate-900">Detail Pengguna</h3>
+        <p class="text-xs text-slate-500 font-mono mt-0.5" id="modal-user-email">-</p>
       </div>
-      <button onclick="closeModal('modal-user-detail')" class="admin-icon-btn-light">
-        <i data-lucide="x" class="w-4 h-4"></i>
-      </button>
+      <button onclick="closeModal('modal-user-detail')" class="p-2 hover:bg-slate-200 rounded-lg text-slate-500"><i data-lucide="x" class="w-4 h-4"></i></button>
     </div>
-    <div class="admin-modal-body" id="modal-user-body"></div>
+    <div class="p-5 overflow-y-auto" id="modal-user-body"></div>
   </div>
 </div>
 
-<!-- MODAL USER POINTS -->
-<div id="modal-user-points" class="admin-modal hidden">
-  <div class="admin-modal-card admin-modal-sm">
-    <div class="admin-modal-head">
+<div id="modal-user-points" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
       <div>
-        <h3 class="admin-modal-title">Sesuaikan Poin</h3>
-        <p class="admin-modal-sub" id="modal-points-email">-</p>
+        <h3 class="font-bold text-slate-900">Sesuaikan Poin</h3>
+        <p class="text-xs text-slate-500 font-mono mt-0.5" id="modal-points-email">-</p>
       </div>
-      <button onclick="closeModal('modal-user-points')" class="admin-icon-btn-light">
-        <i data-lucide="x" class="w-4 h-4"></i>
-      </button>
+      <button onclick="closeModal('modal-user-points')" class="p-2 hover:bg-slate-200 rounded-lg text-slate-500"><i data-lucide="x" class="w-4 h-4"></i></button>
     </div>
-    <div class="admin-modal-body space-y-3">
+    <div class="p-5 space-y-4">
       <div>
-        <label class="admin-field-label">Delta (positif = tambah, negatif = kurang)</label>
-        <input type="number" id="modal-points-delta" placeholder="contoh: 500 atau -500" class="admin-field-input" />
+        <label class="admin-field-label">Delta (Positif = Tambah)</label>
+        <input type="number" id="modal-points-delta" placeholder="contoh: 500" class="admin-field-input" />
       </div>
       <div>
         <label class="admin-field-label">Alasan</label>
-        <input type="text" id="modal-points-reason" placeholder="contoh: bonus event, refund, dll" class="admin-field-input" />
+        <input type="text" id="modal-points-reason" placeholder="contoh: bonus event" class="admin-field-input" />
       </div>
       <div class="flex gap-2 pt-2">
-        <button onclick="submitUserPoints()" class="admin-btn-primary flex-1">Simpan</button>
-        <button onclick="closeModal('modal-user-points')" class="admin-btn-secondary">Batal</button>
+        <button onclick="submitUserPoints()" class="admin-btn-primary flex-1 justify-center">Simpan</button>
+        <button onclick="closeModal('modal-user-points')" class="admin-btn-secondary flex-1 justify-center">Batal</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- MODAL USER BAN -->
-<div id="modal-user-ban" class="admin-modal hidden">
-  <div class="admin-modal-card admin-modal-sm">
-    <div class="admin-modal-head">
+<div id="modal-user-ban" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
       <div>
-        <h3 class="admin-modal-title">Ban User</h3>
-        <p class="admin-modal-sub" id="modal-ban-email">-</p>
+        <h3 class="font-bold text-slate-900">Ban User</h3>
+        <p class="text-xs text-slate-500 font-mono mt-0.5" id="modal-ban-email">-</p>
       </div>
-      <button onclick="closeModal('modal-user-ban')" class="admin-icon-btn-light">
-        <i data-lucide="x" class="w-4 h-4"></i>
-      </button>
+      <button onclick="closeModal('modal-user-ban')" class="p-2 hover:bg-slate-200 rounded-lg text-slate-500"><i data-lucide="x" class="w-4 h-4"></i></button>
     </div>
-    <div class="admin-modal-body space-y-3">
+    <div class="p-5 space-y-4">
       <div>
-        <label class="admin-field-label">Durasi (jam, isi 0 untuk permanent)</label>
+        <label class="admin-field-label">Durasi (Jam, isi 0 = Permanen)</label>
         <input type="number" id="modal-ban-duration" value="24" class="admin-field-input" />
       </div>
       <div>
         <label class="admin-field-label">Alasan</label>
-        <input type="text" id="modal-ban-reason" placeholder="contoh: abuse, spam, dll" class="admin-field-input" />
+        <input type="text" id="modal-ban-reason" placeholder="contoh: spam" class="admin-field-input" />
       </div>
       <div class="flex gap-2 pt-2">
-        <button onclick="submitUserBan()" class="admin-btn-danger flex-1">Ban Sekarang</button>
-        <button onclick="closeModal('modal-user-ban')" class="admin-btn-secondary">Batal</button>
+        <button onclick="submitUserBan()" class="admin-btn-primary flex-1 justify-center bg-red-500 hover:bg-red-600 shadow-red-500/30">Ban</button>
+        <button onclick="closeModal('modal-user-ban')" class="admin-btn-secondary flex-1 justify-center">Batal</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- MODAL BLOCK IP -->
-<div id="modal-block-ip" class="admin-modal hidden">
-  <div class="admin-modal-card admin-modal-sm">
-    <div class="admin-modal-head">
+<div id="modal-block-ip" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl">
+    <div class="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
       <div>
-        <h3 class="admin-modal-title">Block IP Address</h3>
-        <p class="admin-modal-sub">Blokir IP tertentu dari platform</p>
+        <h3 class="font-bold text-slate-900">Block IP Address</h3>
+        <p class="text-xs text-slate-500 mt-0.5">Blokir IP dari platform</p>
       </div>
-      <button onclick="closeModal('modal-block-ip')" class="admin-icon-btn-light">
-        <i data-lucide="x" class="w-4 h-4"></i>
-      </button>
+      <button onclick="closeModal('modal-block-ip')" class="p-2 hover:bg-slate-200 rounded-lg text-slate-500"><i data-lucide="x" class="w-4 h-4"></i></button>
     </div>
-    <div class="admin-modal-body space-y-3">
+    <div class="p-5 space-y-4">
       <div>
         <label class="admin-field-label">IP Address</label>
-        <input type="text" id="modal-ip-value" placeholder="contoh: 203.0.113.5" class="admin-field-input" />
+        <input type="text" id="modal-ip-value" placeholder="203.0.113.5" class="admin-field-input" />
       </div>
       <div>
         <label class="admin-field-label">Alasan</label>
         <input type="text" id="modal-ip-reason" placeholder="contoh: spam massal" class="admin-field-input" />
       </div>
       <div>
-        <label class="admin-field-label">Durasi (menit, isi 0 untuk permanent)</label>
+        <label class="admin-field-label">Durasi (Menit, isi 0 = Permanen)</label>
         <input type="number" id="modal-ip-duration" value="1440" class="admin-field-input" />
       </div>
       <div class="flex gap-2 pt-2">
-        <button onclick="submitBlockIp()" class="admin-btn-danger flex-1">Block IP</button>
-        <button onclick="closeModal('modal-block-ip')" class="admin-btn-secondary">Batal</button>
+        <button onclick="submitBlockIp()" class="admin-btn-primary flex-1 justify-center bg-red-500 hover:bg-red-600 shadow-red-500/30">Block IP</button>
+        <button onclick="closeModal('modal-block-ip')" class="admin-btn-secondary flex-1 justify-center">Batal</button>
       </div>
     </div>
   </div>
 </div>
 
-<div id="admin-toast" class="admin-toast-wrap"></div>
+<div id="admin-toast" class="fixed top-4 right-4 z-[9999] flex flex-col gap-2 w-full max-w-sm pointer-events-none"></div>
 
 <script src="assets/utils.js"></script>
 <script src="assets/api.js"></script>
