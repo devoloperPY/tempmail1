@@ -241,19 +241,19 @@ async function loadUser() {
   
 async function loadConfigCost() {
   try {
-    const res = await apiFetch('/api/web/config');
+    const res = await apiFetch('/api/web/config?t=' + Date.now(), { cache: 'no-store' });
     const cfg = res?.data || {};
     
-    state.config = {
-      ...state.config,
-      ...cfg,
-      pointingCost: parseInt(cfg.subdomain_pointing_cost) || 500,
-      termuxCost: parseInt(cfg.subdomain_termux_cost) || 500
-    };
+    state.config.pointingCost = parseInt(cfg.subdomain_pointing_cost) || 500;
+    state.config.termuxCost = parseInt(cfg.subdomain_termux_cost) || 500;
+    state.config.free_max_active_subdomain = parseInt(cfg.free_max_active_subdomain) || 3;
+    state.config.premium_max_active_subdomain = parseInt(cfg.premium_max_active_subdomain) || 20;
     
     const cost = state.config.pointingCost;
     if ($('quick-cost')) $('quick-cost').textContent = fmtNum(cost);
     if ($('modal-cost')) $('modal-cost').textContent = fmtNum(cost);
+    
+    console.log('[config] loaded:', state.config);
   } catch (e) {
     console.log('Gagal memuat config cost:', e);
   }
@@ -708,7 +708,10 @@ function switchCreateTab(kind) {
   if (btn) btn.classList.add('active');
   if (form) form.classList.remove('hidden');
 
-  const cost = kind === 'termux' ? (state.config.termuxCost || 500) : (state.config.pointingCost || 500);
+  const cost = kind === 'termux' ? state.config.termuxCost : state.config.pointingCost;
+  
+  console.log('[switchTab]', kind, 'cost =', cost);
+  
   if ($('modal-cost')) $('modal-cost').textContent = fmtNum(cost);
 }
 
