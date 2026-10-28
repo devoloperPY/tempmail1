@@ -117,40 +117,38 @@
     }
   }
 
-  async function updateStatusBar() {
-    const statusBar = $('tm-status-bar');
-    if (!statusBar) return;
+async function updateStatusBar() {
+  const statusBar = $('tm-status-bar');
+  if (!statusBar) return;
 
-    try {
-      const [quotaRes, tier] = await Promise.all([
-        apiFetch('/api/web/user/quota').catch(function () { return null; }),
-        fetchUserTier()
-      ]);
+  try {
+    const res = await apiFetch('/api/web/user/quota', { cache: 'no-store' });
+    const q = res?.data || {};
 
-      const q = quotaRes?.data || {};
-      const used = q.used_today || 0;
-      const max = q.max_per_day || 10;
-      const isPremium = tier === 'premium';
+    const used = q.used_today || 0;
+    const max = q.max_per_day || 5;
+    const duration = q.mailbox_duration_minutes || 180;
+    const isPremium = q.tier === 'premium';
 
-      statusBar.innerHTML =
-        '<div class="tm-status-item">' +
-          '<i data-lucide="inbox" class="w-3 h-3 text-blue-600"></i>' +
-          'Kuota: ' + used + ' / ' + max +
-        '</div>' +
-        '<div class="tm-status-item">' +
-          '<i data-lucide="crown" class="w-3 h-3 ' + (isPremium ? 'text-amber-500' : 'text-slate-400') + '"></i>' +
-          'Akun: ' + (isPremium ? 'Premium' : 'Free') +
-        '</div>' +
-        '<div class="tm-status-item">' +
-          '<i data-lucide="clock" class="w-3 h-3 text-emerald-600"></i>' +
-          'Durasi: ' + (q.mailbox_duration_minutes || 300) + ' mnt' +
-        '</div>';
+    statusBar.innerHTML =
+      '<div class="tm-status-item">' +
+        '<i data-lucide="inbox" class="w-3 h-3 text-blue-600"></i>' +
+        'Kuota: ' + used + ' / ' + max +
+      '</div>' +
+      '<div class="tm-status-item">' +
+        '<i data-lucide="crown" class="w-3 h-3 ' + (isPremium ? 'text-amber-500' : 'text-slate-400') + '"></i>' +
+        'Akun: ' + (isPremium ? 'Premium' : 'Free') +
+      '</div>' +
+      '<div class="tm-status-item">' +
+        '<i data-lucide="clock" class="w-3 h-3 text-emerald-600"></i>' +
+        'Durasi: ' + duration + ' mnt' +
+      '</div>';
 
-      if (window.lucide) window.lucide.createIcons();
-    } catch (e) {
-      statusBar.innerHTML = '<div class="tm-status-item">Gagal memuat status.</div>';
-    }
+    if (window.lucide) window.lucide.createIcons();
+  } catch (e) {
+    statusBar.innerHTML = '<div class="tm-status-item">Gagal memuat status.</div>';
   }
+}
 
   function renderMailboxList(mailboxes) {
     const list = $('tm-mailboxes-list');
