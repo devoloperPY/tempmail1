@@ -242,6 +242,31 @@ body.admin-body {
 .admin-badge-red { background: #fef2f2; color: #dc2626; }
 .admin-badge-amber { background: #fffbeb; color: #d97706; }
 .admin-badge-gray { background: #f1f5f9; color: #64748b; }
+.admin-badge-default { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+
+.admin-domain-card {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+@media (min-width: 640px) {
+  .admin-domain-card {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.admin-domain-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: var(--shadow-sm);
+}
 
 .admin-view { display: none; }
 .admin-view.active { display: block; animation: slideUpFade 0.4s var(--spring) forwards; }
