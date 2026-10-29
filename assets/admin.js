@@ -267,7 +267,7 @@
 
   async function loadUsers() {
     const wrap = $('users-tbody');
-    if (wrap) wrap.innerHTML = '<div class="admin-skeleton h-16 w-full rounded-xl mb-3"></div><div class="admin-skeleton h-16 w-full rounded-xl"></div>';
+    if (wrap) wrap.innerHTML = '<div class="admin-skeleton h-14 w-full rounded-xl mb-2"></div><div class="admin-skeleton h-14 w-full rounded-xl"></div>';
 
     try {
       const params = new URLSearchParams();
@@ -300,25 +300,25 @@
         else tierBadge = '<span class="admin-badge admin-badge-gray">Free</span>';
 
         return `
-          <div class="admin-data-row">
-            <div class="admin-data-info">
-              <div class="admin-data-avatar">${esc((u.display_name || u.email).charAt(0).toUpperCase())}</div>
+          <div class="admin-data-row" style="padding: 10px 14px; gap: 8px;">
+            <div class="admin-data-info" style="gap: 10px;">
+              <div class="admin-data-avatar" style="width: 32px; height: 32px; font-size: 14px; border-radius: 8px;">${esc((u.display_name || u.email).charAt(0).toUpperCase())}</div>
               <div class="admin-data-text">
-                <p class="admin-data-title">${esc(u.email)}</p>
-                <div class="flex items-center gap-2 mt-1 flex-wrap">
-                  <span class="text-[11px] text-slate-500">${esc(u.display_name || '-')}</span>
+                <p class="admin-data-title" style="font-size: 13px;">${esc(u.email)}</p>
+                <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span class="text-[10px] text-slate-500">${esc(u.display_name || '-')}</span>
                   ${tierBadge} ${statusBadge}
                 </div>
               </div>
             </div>
-            <div class="flex flex-col items-end gap-2 shrink-0 w-full sm:w-auto mt-3 sm:mt-0">
+            <div class="flex flex-col items-end gap-1 shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
               <div class="text-right">
-                <p class="text-sm font-extrabold text-amber-600">${fmtNum(u.points || 0)} Poin</p>
-                <p class="text-[10px] text-slate-400">Daftar: ${esc(fmtDate(u.created_at))}</p>
+                <p class="text-xs font-extrabold text-amber-600">${fmtNum(u.points || 0)} Poin</p>
+                <p class="text-[9px] text-slate-400">Daftar: ${esc(fmtDate(u.created_at))}</p>
               </div>
-              <div class="flex gap-2 w-full sm:w-auto justify-end">
-                <button onclick="openUserDetail('${esc(u.id)}')" class="admin-btn-secondary" style="padding:6px 12px; font-size:11px;">Detail</button>
-                <button onclick="openUserPointsModal('${esc(u.id)}','${esc(u.email)}',${u.points || 0})" class="admin-btn-secondary" style="padding:6px 12px; font-size:11px; color:#d97706; border-color:#fde68a; background:#fffbeb;">Kelola Poin</button>
+              <div class="flex gap-1.5 w-full sm:w-auto justify-end mt-1">
+                <button onclick="openUserDetail('${esc(u.id)}')" class="admin-btn-secondary" style="padding:4px 10px; font-size:10px;">Detail</button>
+                <button onclick="openUserPointsModal('${esc(u.id)}','${esc(u.email)}',${u.points || 0})" class="admin-btn-secondary" style="padding:4px 10px; font-size:10px; color:#d97706; border-color:#fde68a; background:#fffbeb;">Kelola Poin</button>
               </div>
             </div>
           </div>`;
@@ -382,9 +382,9 @@
       if ($('modal-user-email')) $('modal-user-email').textContent = u.email || '-';
 
       const infoRow = (label, value) => `
-        <div class="flex justify-between py-2 border-b border-slate-100">
-          <span class="text-xs text-slate-500">${esc(label)}</span>
-          <span class="text-xs font-semibold text-slate-800 text-right">${value}</span>
+        <div class="flex justify-between py-1.5 border-b border-slate-100">
+          <span class="text-[11px] text-slate-500">${esc(label)}</span>
+          <span class="text-[11px] font-semibold text-slate-800 text-right">${value}</span>
         </div>`;
 
       let tierBadge = 'admin-badge-gray';
@@ -392,10 +392,8 @@
       else if (u.tier === 'premium') tierBadge = 'admin-badge-amber';
 
       body.innerHTML = `
-        <div class="space-y-1 mb-4">
+        <div class="space-y-0.5 mb-4">
           ${infoRow('Nama', esc(u.display_name || '-'))}
-          ${infoRow('Role', `<span class="admin-badge ${u.role === 'admin' || u.role === 'owner' ? 'admin-badge-amber' : 'admin-badge-gray'}">${esc((u.role || 'user').toUpperCase())}</span>`)}
-          ${infoRow('Tier', `<span class="admin-badge ${tierBadge}">${esc((u.tier || 'free').toUpperCase())}</span>`)}
           ${infoRow('Email Verified', u.email_verified ? '<span class="text-emerald-600">Ya</span>' : '<span class="text-red-600">Tidak</span>')}
           ${infoRow('Poin', `<span class="text-amber-600 font-bold">${fmtNum(u.points || 0)}</span>`)}
           ${infoRow('Login Count', fmtNum(u.login_count || 0))}
@@ -405,15 +403,60 @@
           ${infoRow('Subdomain', fmtNum(u.subdomain_count || 0))}
           ${infoRow('Sesi Aktif', fmtNum(u.active_sessions || 0))}
         </div>
+
+        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 mb-4">
+          <h4 class="text-xs font-bold text-slate-800 mb-3">Edit Role & Tier</h4>
+          <div class="grid grid-cols-2 gap-3 mb-3">
+            <div>
+              <label class="admin-field-label">Role Akses</label>
+              <select id="edit-user-role" class="admin-field-input">
+                <option value="user" ${u.role === 'user' ? 'selected' : ''}>User (Hanya Dashboard)</label>
+                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin (Bisa Buka /admin)</option>
+                <option value="owner" ${u.role === 'owner' ? 'selected' : ''}>Owner (Akses Penuh)</option>
+              </select>
+            </div>
+            <div>
+              <label class="admin-field-label">Tier Limit</label>
+              <select id="edit-user-tier" class="admin-field-input">
+                <option value="free" ${u.tier === 'free' ? 'selected' : ''}>Free</option>
+                <option value="premium" ${u.tier === 'premium' ? 'selected' : ''}>Premium</option>
+                <option value="owner" ${u.tier === 'owner' ? 'selected' : ''}>Owner (Unlimited)</option>
+              </select>
+            </div>
+          </div>
+          <button onclick="submitUserRoleTier('${esc(u.id)}')" class="w-full admin-btn-primary justify-center" style="padding: 8px; font-size: 11px;">Simpan Perubahan Role & Tier</button>
+        </div>
+
         <div class="grid grid-cols-2 gap-2">
-          <button onclick="openUserPointsModal('${esc(u.id)}','${esc(u.email)}',${u.points || 0})" class="admin-btn-primary justify-center" style="width:100%;">Kelola Poin</button>
+          <button onclick="openUserPointsModal('${esc(u.id)}','${esc(u.email)}',${u.points || 0})" class="admin-btn-primary justify-center" style="width:100%; font-size:11px; padding:8px;">Kelola Poin</button>
           ${u.banned
-            ? `<button onclick="submitUserUnban('${esc(u.id)}')" class="admin-btn-secondary justify-center" style="width:100%;">Unban</button>`
-            : `<button onclick="openBanModal('${esc(u.id)}','${esc(u.email)}')" class="admin-btn-secondary justify-center" style="color:#b91c1c;border-color:#fecaca; width:100%;">Ban</button>`}
-          <button onclick="submitDeleteUser('${esc(u.id)}','${esc(u.email)}')" class="admin-btn-danger justify-center col-span-2" style="width:100%; margin-top:8px;">Hapus Akun Permanen</button>
+            ? `<button onclick="submitUserUnban('${esc(u.id)}')" class="admin-btn-secondary justify-center" style="width:100%; font-size:11px; padding:8px;">Unban</button>`
+            : `<button onclick="openBanModal('${esc(u.id)}','${esc(u.email)}')" class="admin-btn-secondary justify-center" style="color:#b91c1c;border-color:#fecaca; width:100%; font-size:11px; padding:8px;">Ban</button>`}
+          <button onclick="submitDeleteUser('${esc(u.id)}','${esc(u.email)}')" class="admin-btn-danger justify-center col-span-2" style="width:100%; margin-top:4px; font-size:11px; padding:8px;">Hapus Akun Permanen</button>
         </div>`;
     } catch (err) {
       body.innerHTML = `<p class="text-xs text-red-500 p-4">${esc(err.message)}</p>`;
+    }
+  }
+
+  async function submitUserRoleTier(userId) {
+    const role = $('edit-user-role')?.value;
+    const tier = $('edit-user-tier')?.value;
+    if (!role || !tier) return;
+
+    adminLoading(true);
+    try {
+      await apiFetch('/api/admin/web/users/' + encodeURIComponent(userId), {
+        method: 'PATCH',
+        body: { role, tier }
+      });
+      adminToast('Role & Tier berhasil diupdate', 'success');
+      closeModal('modal-user-detail');
+      loadUsers();
+    } catch (err) {
+      adminToast(err.message, 'error');
+    } finally {
+      adminLoading(false);
     }
   }
 
@@ -671,21 +714,25 @@
     { key: 'subdomain_termux_cost', label: 'Biaya Subdomain Termux (poin)', group: 'Poin & Subdomain' },
     { key: 'free_max_active_subdomain', label: 'Max Subdomain Aktif (Free)', group: 'Poin & Subdomain' },
     { key: 'premium_max_active_subdomain', label: 'Max Subdomain Aktif (Premium)', group: 'Poin & Subdomain' },
+    
     { key: 'max_mailbox_per_ip_day', label: 'Max Mailbox per IP/hari', group: 'Mailbox' },
     { key: 'mailbox_duration_minutes', label: 'Durasi Mailbox (menit)', group: 'Mailbox' },
     { key: 'max_messages_per_mailbox', label: 'Max Pesan per Mailbox', group: 'Mailbox' },
     { key: 'max_concurrent_mailbox', label: 'Max Mailbox Aktif per User', group: 'Mailbox' },
     { key: 'global_max_mailbox_per_day', label: 'Global Max Mailbox/hari', group: 'Mailbox' },
+    
     { key: 'free_user_daily_limit', label: 'Free: Limit Mailbox/Hari', group: 'User Tiers' },
     { key: 'free_user_mailbox_duration', label: 'Free: Durasi Mailbox (menit)', group: 'User Tiers' },
     { key: 'free_user_max_messages', label: 'Free: Max Pesan', group: 'User Tiers' },
     { key: 'premium_user_daily_limit', label: 'Premium: Limit Mailbox/Hari', group: 'User Tiers' },
     { key: 'premium_user_mailbox_duration', label: 'Premium: Durasi Mailbox (menit)', group: 'User Tiers' },
     { key: 'premium_user_max_messages', label: 'Premium: Max Pesan', group: 'User Tiers' },
+    
     { key: 'max_accounts_per_ip', label: 'Max Akun per IP', group: 'Keamanan' },
     { key: 'max_accounts_per_device', label: 'Max Akun per Device', group: 'Keamanan' },
     { key: 'captcha_enabled', label: 'Captcha Aktif (1/0)', group: 'Keamanan' },
     { key: 'email_whitelist_enabled', label: 'Whitelist Provider Aktif (1/0)', group: 'Keamanan' },
+    
     { key: 'maintenance_mode', label: 'Mode Maintenance (1/0)', group: 'Sistem' },
     { key: 'web_enabled', label: 'Web Aktif (1/0)', group: 'Sistem' },
     { key: 'require_login', label: 'Wajib Login (1/0)', group: 'Sistem' },
@@ -720,7 +767,7 @@
             </div>`;
         }).join('');
         return `
-          <div class="admin-card p-5">
+          <div class="admin-card p-5 h-full">
             <h3 class="text-sm font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100">${esc(groupName)}</h3>
             ${fields}
           </div>`;
@@ -738,10 +785,14 @@
       const key = inp.getAttribute('data-config-key');
       const val = inp.value.trim();
       if (state.configs[key] !== val) {
-        const numKeys = ['signup_bonus_points', 'subdomain_pointing_cost', 'subdomain_termux_cost',
+        const numKeys = [
+          'signup_bonus_points', 'subdomain_pointing_cost', 'subdomain_termux_cost',
           'free_max_active_subdomain', 'premium_max_active_subdomain', 'max_mailbox_per_ip_day',
           'mailbox_duration_minutes', 'max_messages_per_mailbox', 'max_concurrent_mailbox',
-          'global_max_mailbox_per_day', 'max_accounts_per_ip', 'max_accounts_per_device'];
+          'global_max_mailbox_per_day', 'max_accounts_per_ip', 'max_accounts_per_device',
+          'free_user_daily_limit', 'free_user_mailbox_duration', 'free_user_max_messages',
+          'premium_user_daily_limit', 'premium_user_mailbox_duration', 'premium_user_max_messages'
+        ];
 
         if (numKeys.includes(key)) {
           payload[key] = parseInt(val);
@@ -946,6 +997,7 @@
   window.filterUsers = filterUsers;
   window.searchUsers = searchUsers;
   window.openUserDetail = openUserDetail;
+  window.submitUserRoleTier = submitUserRoleTier;
   window.openUserPointsModal = openUserPointsModal;
   window.submitUserPoints = submitUserPoints;
   window.openBanModal = openBanModal;
