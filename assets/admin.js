@@ -618,17 +618,27 @@
         const defaultBadge = d.is_default ? '<span class="admin-badge admin-badge-default">DEFAULT</span>' : '';
         const activeBadge = d.is_active ? '<span class="admin-badge admin-badge-green">Aktif</span>' : '<span class="admin-badge admin-badge-red">Nonaktif</span>';
         
+        let routingBadge = '';
+        if (d.is_routing_active === 1) {
+          routingBadge = '<span class="admin-badge admin-badge-green">Routing Active</span>';
+        } else {
+          routingBadge = '<span class="admin-badge admin-badge-gray">Routing Off</span>';
+        }
+
         return `
           <div class="admin-domain-card">
             <div class="min-w-0 flex-1">
               <p class="font-mono text-sm font-bold text-slate-900 break-all">${esc(d.domain)}</p>
               <div class="flex items-center gap-2 mt-1 flex-wrap">
-                ${activeBadge} ${defaultBadge}
+                ${activeBadge} ${defaultBadge} ${routingBadge}
                 <span class="text-[11px] text-slate-500">${esc(d.description || '-')}</span>
               </div>
               <p class="text-[10px] text-slate-400 mt-1">Dibuat: ${esc(fmtDate(d.created_at))}</p>
             </div>
-            <div class="flex items-center gap-2 shrink-0 mt-3 sm:mt-0">
+            <div class="flex items-center gap-2 shrink-0 mt-3 sm:mt-0 flex-wrap justify-end">
+              <button onclick="toggleDomainRouting('${esc(d.id)}', ${d.is_routing_active === 1})" class="admin-btn-secondary" style="padding:6px 10px; font-size:11px; color:${d.is_routing_active === 1 ? '#b91c1c' : '#059669'}; border-color:${d.is_routing_active === 1 ? '#fecaca' : '#a7f3d0'}; background:${d.is_routing_active === 1 ? '#fef2f2' : '#ecfdf5'};">
+                ${d.is_routing_active === 1 ? 'Matikan Routing' : 'Aktifkan Routing'}
+              </button>
               ${!d.is_default ? `<button onclick="setDefaultDomain('${esc(d.id)}')" class="admin-btn-secondary" style="padding:6px 10px; font-size:11px;">Jadikan Default</button>` : ''}
               ${!d.is_default ? `<button onclick="deleteDomain('${esc(d.id)}', '${esc(d.domain)}')" class="admin-btn-secondary" style="padding:6px 10px; font-size:11px; color:#b91c1c; border-color:#fecaca;">Hapus</button>` : ''}
             </div>
@@ -636,6 +646,24 @@
       }).join('');
     } catch (err) {
       wrap.innerHTML = `<div class="p-8 text-center text-xs text-red-500">${esc(err.message)}</div>`;
+    }
+  }
+
+  async function toggleDomainRouting(id, isActive) {
+    const actionText = isActive ? 'menonaktifkan' : 'mengaktifkan';
+    if (!confirm(`Yakin ingin ${actionText} Email Routing untuk domain ini?`)) return;
+
+    adminLoading(true);
+    try {
+      const res = await apiFetch('/api/admin/web/domains/' + encodeURIComponent(id) + '/toggle-routing', {
+        method: 'PATCH'
+      });
+      adminToast(res.message || 'Routing berhasil diubah', 'success');
+      loadDomains();
+    } catch (err) {
+      adminToast(err.message, 'error');
+    } finally {
+      adminLoading(false);
     }
   }
 
@@ -1010,6 +1038,7 @@
   window.submitAddDomain = submitAddDomain;
   window.setDefaultDomain = setDefaultDomain;
   window.deleteDomain = deleteDomain;
+  window.toggleDomainRouting = toggleDomainRouting;
   window.loadConfig = loadConfig;
   window.saveConfig = saveConfig;
   window.loadVisitors = loadVisitors;
