@@ -207,11 +207,14 @@
               '<p class="font-mono-code text-[11px] font-bold text-slate-900 truncate">' + escapeHtml(m.email) + '</p>' +
               premiumBadge +
             '</div>' +
-            '<div class="flex items-center gap-1.5 shrink-0">' +
-              '<button onclick="event.stopPropagation(); Utils.copyToClipboard(\'' + escapeHtml(m.email) + '\', \'Email disalin!\')" class="text-slate-400 hover:text-blue-600 transition" title="Copy Email">' +
-                '<i data-lucide="copy" class="w-3 h-3"></i>' +
+            '<div class="flex items-center gap-1 shrink-0">' +
+              '<button onclick="event.stopPropagation(); Utils.copyToClipboard(\'' + escapeHtml(m.email) + '\', \'Email disalin!\')" class="text-slate-400 hover:text-blue-600 transition p-1" title="Copy Email">' +
+                '<i data-lucide="copy" class="w-3.5 h-3.5"></i>' +
               '</button>' +
-              '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">' + msgCount + '</span>' +
+              '<button onclick="event.stopPropagation(); deleteMailbox(\'' + escapeHtml(m.id) + '\', \'' + escapeHtml(m.email) + '\')" class="text-slate-400 hover:text-red-600 transition p-1" title="Hapus Mailbox">' +
+                '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i>' +
+              '</button>' +
+              '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 ml-1">' + msgCount + '</span>' +
             '</div>' +
           '</div>' +
           '<p class="text-[10px] text-slate-500 mt-1 flex items-center gap-1">' +
@@ -256,6 +259,30 @@
       if (list) {
         list.innerHTML = '<div class="p-4 text-center text-xs text-red-500">' + escapeHtml(err.message) + '</div>';
       }
+    }
+  }
+
+  async function deleteMailbox(id, email) {
+    if (!confirm('Hapus mailbox ' + email + ' beserta semua pesannya?')) return;
+
+    Utils.showLoading('Menghapus mailbox...');
+    try {
+      await apiFetch('/api/web/user/my-mailboxes/' + encodeURIComponent(id), { method: 'DELETE' });
+      Utils.showToast('Mailbox dihapus', 'success');
+      
+      if (currentMailboxId === id) {
+        currentMailboxId = null;
+        currentMailboxEmail = '';
+        closeReader();
+      }
+      
+      loadMailboxes();
+      updateStatusBar();
+      
+    } catch (err) {
+      Utils.showToast(err.message || 'Gagal menghapus mailbox', 'error');
+    } finally {
+      Utils.hideLoading();
     }
   }
 
@@ -546,5 +573,7 @@
       closeReader();
     }
   };
+
+  window.deleteMailbox = deleteMailbox;
 
 })();
