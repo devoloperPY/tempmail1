@@ -671,6 +671,7 @@
 
   function openAddDomainModal() {
     if ($('modal-domain-value')) $('modal-domain-value').value = '';
+    if ($('modal-domain-zoneid')) $('modal-domain-zoneid').value = '';
     if ($('modal-domain-desc')) $('modal-domain-desc').value = '';
     if ($('modal-domain-default')) $('modal-domain-default').checked = false;
     openModal('modal-add-domain');
@@ -678,6 +679,7 @@
 
   async function submitAddDomain() {
     const domain = ($('modal-domain-value')?.value || '').trim().toLowerCase();
+    const zoneId = ($('modal-domain-zoneid')?.value || '').trim();
     const description = ($('modal-domain-desc')?.value || '').trim();
     const isDefault = $('modal-domain-default')?.checked || false;
 
@@ -686,11 +688,16 @@
       return;
     }
 
+    if (!zoneId) {
+      adminToast('Zone ID wajib diisi', 'error');
+      return;
+    }
+
     adminLoading(true);
     try {
       await apiFetch('/api/admin/web/domains', {
         method: 'POST',
-        body: { domain, description, is_active: true, is_default: isDefault }
+        body: { domain, cf_zone_id: zoneId, description, is_active: true, is_default: isDefault }
       });
       adminToast('Domain berhasil ditambahkan', 'success');
       closeModal('modal-add-domain');
