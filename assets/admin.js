@@ -656,12 +656,14 @@
     adminLoading(true);
     try {
       const res = await apiFetch('/api/admin/web/domains/' + encodeURIComponent(id) + '/toggle-routing', {
-        method: 'PATCH'
+        method: 'PATCH',
+        skipAuthRedirect: true
       });
-      adminToast(res.message || 'Routing berhasil diubah', 'success');
+      const successMsg = res?.message || 'Routing berhasil diubah';
+      adminToast(successMsg, 'success');
       loadDomains();
     } catch (err) {
-      adminToast(err.message, 'error');
+      adminToast(err.message || 'Gagal mengubah routing', 'error');
     } finally {
       adminLoading(false);
     }
