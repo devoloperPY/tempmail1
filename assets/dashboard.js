@@ -1018,7 +1018,7 @@
   }
 
   function switchAccTab(name) {
-    ['profile', 'security', 'sessions', 'danger'].forEach(function (t) {
+    ['profile', 'security', 'api-keys', 'sessions', 'danger'].forEach(function (t) {
       const btn = $('atab-' + t);
       const panel = $('apanel-' + t);
       if (btn) btn.classList.remove('active');
@@ -1028,7 +1028,87 @@
     const panel = $('apanel-' + name);
     if (btn) btn.classList.add('active');
     if (panel) panel.classList.remove('hidden');
+    
     if (name === 'sessions') loadSessions();
+    if (name === 'api-keys') loadApiKeys();
+  }
+
+  async function loadApiKeys() {
+    const list = $('api-keys-list');
+    if (!list) return;
+    list.innerHTML = '<div class="skeleton h-16 rounded-xl"></div>';
+
+    try {
+      const res = await apiFetch('/api/web/user/api-keys');
+      const keys = res?.data?.keys || [];
+
+      if (!keys.length) {
+        list.innerHTML = '<p class="text-xs text-slate-400">Belum ada API Key. Buat baru di atas.</p>';
+        return;
+      }
+
+      list.innerHTML = keys.map(function (k) {
+        const isRevoked = k.revoked;
+        const expiredText = k.expires_at ? 'Expired: ' + fmtDate(k.expires_at) : 'Tidak ada expired';
+        const lastUsedText = k.last_used_at ? 'Terakhir dipakai: ' + fmtRel(k.last_used_at) : 'Belum pernah dipakai';
+        
+        return `
+          <div class="p-3 rounded-xl border ${isRevoked ? 'border-red-200 bg-red-50' : 'border-slate-200 bg-white'} mb-2">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <p class="text-xs font-bold text-slate-800 truncate">${escHtml(k.label)}</p>
+              ${isRevoked ? '<span class="dash-badge-type dash-badge-blocked">Revoked</span>' : '<span class="dash-badge-type dash-badge-active">Aktif</span>'}
+            </div>
+            <p class="font-mono-code text-xs text-slate-600 mb-2 break-all">${escHtml(k.prefix)}...****</p>
+            <div class="flex items-center justify-between text-[10px] text-slate-500">
+              <span>${escHtml(lastUsedText)}</span>
+              ${!isRevoked ? `<button onclick="revokeApiKey('${escHtml(k.id)}', '${escHtml(k.label)}')" class="text-red-600 hover:underline font-semibold">Cabut</button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (err) {
+      list.innerHTML = `<p class="text-xs text-red-500">${escHtml(err.message)}</p>`;
+    }
+  }
+
+  async function generateApiKey() {
+    const label = ($('api-key-label')?.value || '').trim() || 'default';
+    
+    if (!confirm('API Key hanya akan ditampilkan SEKALI. Pastikan Anda menyimpannya dengan aman. Lanjutkan?')) return;
+
+    Utils.showLoading('Membuat API Key...');
+    try {
+      const res = await apiFetch('/api/web/user/api-keys', {
+        method: 'POST',
+        body: { label: label, scopes: ['mailbox:read', 'mailbox:write'] }
+      });
+      
+      const key = res?.data?.key;
+      if (key) {
+        prompt('Ini API Key Anda. Salin sekarang (tidak akan ditampilkan lagi):', key);
+        $('api-key-label').value = '';
+        loadApiKeys();
+      }
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      Utils.hideLoading();
+    }
+  }
+
+  async function revokeApiKey(id, label) {
+    if (!confirm(`Cabut API Key "${label}"? Key yang sudah dicabut tidak akan bisa dipakai lagi.`)) return;
+
+    Utils.showLoading('Mencabut API Key...');
+    try {
+      await apiFetch('/api/web/user/api-keys/' + encodeURIComponent(id), { method: 'DELETE' });
+      toast('API Key dicabut', 'success');
+      loadApiKeys();
+    } catch (err) {
+      toast(err.message, 'error');
+    } finally {
+      Utils.hideLoading();
+    }
   }
 
   async function loadSessions() {
@@ -1193,6 +1273,7 @@
     $('ac-btn-change-pwd')?.addEventListener('click', changePassword);
     $('ac-btn-revoke-all')?.addEventListener('click', revokeAllSessions);
     $('ac-btn-delete-account')?.addEventListener('click', deleteAccount);
+    $('ac-btn-generate-api')?.addEventListener('click', generateApiKey);
 
     $('pt-btn-refresh')?.addEventListener('click', loadPoints);
     $('tm-btn-refresh-mailboxes')?.addEventListener('click', function () {
@@ -1233,6 +1314,7 @@
   }
 
   window.Dashboard = {
+    user: state.user,
     switchView: switchView,
     toggleSidebar: toggleSidebar,
     openSettingsModal: openSettingsModal,
@@ -1291,6 +1373,8 @@
   window.saveProfile = saveProfile;
   window.changePassword = changePassword;
   window.deleteAccount = deleteAccount;
+  window.generateApiKey = generateApiKey;
+  window.revokeApiKey = revokeApiKey;
 
   document.addEventListener('DOMContentLoaded', init);
 })();
