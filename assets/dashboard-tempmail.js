@@ -197,14 +197,22 @@
       const isSelected = currentMailboxId === m.id;
       const expiresText = m.expires_at ? Utils.formatRelative(m.expires_at) : '-';
       const msgCount = m.message_count || 0;
-      const premiumBadge = m.is_premium ? '<span class="dash-badge-type dash-badge-termux ml-1">PRO</span>' : '';
+      const premiumBadge = m.is_premium ? '<span class="dash-badge-type dash-badge-termux ml-1.5">PRO</span>' : '';
 
       return (
         '<div data-mb-id="' + escapeHtml(m.id) + '" data-mb-email="' + escapeHtml(m.email) + '" class="tm-mb-item p-2.5 rounded-lg border cursor-pointer transition ' +
           (isSelected ? 'bg-blue-50 border-blue-400' : 'bg-white border-slate-200 hover:border-blue-300') + '">' +
           '<div class="flex items-center justify-between gap-2">' +
-            '<p class="font-mono-code text-[11px] font-bold text-slate-900 truncate">' + escapeHtml(m.email) + premiumBadge + '</p>' +
-            '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">' + msgCount + '</span>' +
+            '<div class="flex items-center min-w-0 flex-1">' +
+              '<p class="font-mono-code text-[11px] font-bold text-slate-900 truncate">' + escapeHtml(m.email) + '</p>' +
+              premiumBadge +
+            '</div>' +
+            '<div class="flex items-center gap-1.5 shrink-0">' +
+              '<button onclick="event.stopPropagation(); Utils.copyToClipboard(\'' + escapeHtml(m.email) + '\', \'Email disalin!\')" class="text-slate-400 hover:text-blue-600 transition" title="Copy Email">' +
+                '<i data-lucide="copy" class="w-3 h-3"></i>' +
+              '</button>' +
+              '<span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">' + msgCount + '</span>' +
+            '</div>' +
           '</div>' +
           '<p class="text-[10px] text-slate-500 mt-1 flex items-center gap-1">' +
             '<i data-lucide="clock" class="w-2.5 h-2.5"></i>' +
