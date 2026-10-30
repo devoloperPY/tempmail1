@@ -474,6 +474,7 @@
     <div class="border-b border-slate-200 bg-white flex overflow-x-auto dash-scroll">
       <button onclick="switchAccTab('profile')" id="atab-profile" class="dash-tab active flex items-center gap-1.5"><i data-lucide="user" class="w-3.5 h-3.5"></i> Profil</button>
       <button onclick="switchAccTab('security')" id="atab-security" class="dash-tab flex items-center gap-1.5"><i data-lucide="lock" class="w-3.5 h-3.5"></i> Keamanan</button>
+      <button onclick="switchAccTab('api-keys')" id="atab-api-keys" class="dash-tab flex items-center gap-1.5"><i data-lucide="key" class="w-3.5 h-3.5"></i> API Keys</button>
       <button onclick="switchAccTab('sessions')" id="atab-sessions" class="dash-tab flex items-center gap-1.5"><i data-lucide="monitor" class="w-3.5 h-3.5"></i> Sesi Aktif</button>
       <button onclick="switchAccTab('danger')" id="atab-danger" class="dash-tab flex items-center gap-1.5"><i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Hapus Akun</button>
     </div>
@@ -501,6 +502,21 @@
         <input type="password" id="ac-new-pwd" placeholder="Min 8 karakter, huruf besar, kecil & angka" class="dash-field-input" />
       </div>
       <button id="ac-btn-change-pwd" class="btn-primary px-5 py-2.5 rounded-lg text-sm font-semibold">Ubah Password</button>
+    </div>
+
+    <div id="apanel-api-keys" class="hidden p-6 space-y-4">
+      <div class="p-4 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-800 mb-2">
+        API Key digunakan untuk mengakses TempMail via API (seperti <code>curl</code>). Jangan bagikan key ini ke siapa pun.
+      </div>
+      
+      <div class="flex gap-2">
+        <input type="text" id="api-key-label" placeholder="Label (contoh: Script Bot)" class="dash-field-input flex-1" />
+        <button id="ac-btn-generate-api" class="btn-primary px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">Buat API Key</button>
+      </div>
+
+      <div id="api-keys-list" class="space-y-2 mt-4">
+        <div class="skeleton h-16 rounded-xl"></div>
+      </div>
     </div>
 
     <div id="apanel-sessions" class="hidden p-6">
