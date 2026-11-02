@@ -81,6 +81,35 @@
       .replace(/'/g, '&#039;');
   }
 
+  function showMaintenanceBanner(message, color) {
+    let banner = document.getElementById('maintenance-banner');
+    if (banner) return;
+
+    banner = document.createElement('div');
+    banner.id = 'maintenance-banner';
+    const bg = color || '#f59e0b';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:' + bg + ';color:#fff;padding:12px 16px;text-align:center;font-size:13px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.15);display:flex;align-items:center;justify-content:center;gap:8px';
+    banner.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg><span>' + escHtml(message) + '</span>';
+    document.body.appendChild(banner);
+    document.body.style.paddingTop = '48px';
+  }
+
+  function setupMaintenanceBanner() {
+    window.addEventListener('maintenance-active', function (e) {
+      const msg = (e.detail && e.detail.message) || 'Layanan sedang dinonaktifkan sementara.';
+      showMaintenanceBanner(msg, '#f59e0b');
+    });
+
+    apiFetch('/api/web/stats', { skipAuthRedirect: true }).then(function (res) {
+      const d = res && res.data;
+      if (d && d.enabled === false) {
+        showMaintenanceBanner(d.banner || 'Layanan sedang dinonaktifkan sementara.', '#ef4444');
+      } else if (d && d.maintenance === true) {
+        showMaintenanceBanner(d.banner || 'Sedang dalam perbaikan.', '#f59e0b');
+      }
+    }).catch(function () {});
+  }
+
   function toggleSidebar() {
     const panel = $('sidebar-panel');
     const overlay = $('sidebar-overlay');
@@ -1297,6 +1326,7 @@
     }
     if (window.lucide) window.lucide.createIcons();
     bindEvents();
+    setupMaintenanceBanner();
 
     const ok = await loadUser();
     if (!ok) return;
