@@ -36,7 +36,7 @@ function showBannedModal(reason) {
     <div class="glass-card rounded-2xl p-6 max-w-md w-full border-t-4 border-red-500 text-center animate-fade-in bg-white">
       <div class="w-14 h-14 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 font-bold text-2xl">!</div>
       <h3 class="text-lg font-bold text-slate-900">Akses Dibatasi (Banned)</h3>
-      <p class="text-sm text-slate-600 mt-2">${Utils.escapeHtml(reason || 'Akun atau alamat IP Anda telah dibatasi karena pelanggaran kebijakan anti-abuse.')}</p>
+      <p class="text-sm text-slate-600 mt-2">${Utils.escapeHtml(reason || 'Akun atau alamat IP Anda telah dibatasi.')}</p>
       <div class="mt-5 flex justify-center gap-3">
         <a href="https://t.me/sigitchan" target="_blank" rel="noopener" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">Hubungi @sigitchan</a>
         <button onclick="document.getElementById('banned-alert-modal').remove()" class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold">Tutup</button>
@@ -47,19 +47,22 @@ function showBannedModal(reason) {
 
 function showKillSwitchBanner(message) {
   const banner = document.getElementById('global-banner');
+  
+  // Kalau kita sedang di halaman login/register, pakai banner atas
   if (banner) {
     banner.innerHTML = `
       <div class="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium shadow-sm flex items-start gap-2.5">
         <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0 mt-0.5"></i>
         <div>
           <strong class="block text-sm font-bold text-red-800 mb-0.5">Server Dinonaktifkan</strong>
-          <span>${Utils.escapeHtml(message || 'Maaf, layanan sedang dimatikan sementara oleh Admin. Silakan kembali lagi nanti.')}</span>
+          <span>${Utils.escapeHtml(message || 'Maaf, layanan sedang dimatikan sementara oleh Admin.')}</span>
         </div>
       </div>
     `;
     banner.classList.remove('hidden');
     if (window.lucide) window.lucide.createIcons();
   } else {
+    // Fallback jika di dashboard
     let wrap = document.getElementById('kill-switch-banner-top');
     if (!wrap) {
       wrap = document.createElement('div');
@@ -96,9 +99,14 @@ async function apiFetch(endpoint, options = {}) {
       payload = { success: response.ok, error: text || response.statusText };
     }
 
+    // KHUSUS 503, tampilkan banner di atas aja tanpa Toast/Error merah di form
     if (response.status === 503) {
       showKillSwitchBanner(payload?.error || 'Layanan sedang dinonaktifkan sementara.');
-      throw new Error('Server nonaktif');
+      
+      const error = new Error('Server nonaktif');
+      error.status = 503;
+      error.data = payload;
+      throw error;
     }
 
     if (!response.ok || (payload && payload.success === false)) {
@@ -129,7 +137,11 @@ async function apiFetch(endpoint, options = {}) {
 
     return payload;
   } catch (err) {
-    if (err.message === 'Server nonaktif') throw err;
+    // Biar error 503 tidak muncul sebagai "Failed to fetch" di console
+    if (err.status === 503 || err.message === 'Server nonaktif') {
+      throw err;
+    }
+    
     if (!err.status) {
       if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
         showKillSwitchBanner('Koneksi ke server terputus. Kemungkinan server sedang offline.');
