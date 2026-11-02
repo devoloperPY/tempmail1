@@ -193,25 +193,14 @@
           <p class="text-sm text-slate-500 mt-1">Atur harga, limit per-akun, dan perilaku sistem.</p>
         </div>
         <button onclick="saveConfig()" class="admin-btn-primary shrink-0">
-          <i data-lucide="save" class="w-3.5 h-3.5"></i> Simpan Semua Perubahan
+          <i data-lucide="save" class="w-3.5 h-3.5"></i> Simpan Perubahan
         </button>
       </div>
 
-      <div class="p-4 rounded-xl bg-blue-50 border border-blue-200 mb-6 flex items-start gap-3">
-        <i data-lucide="info" class="w-5 h-5 text-blue-600 shrink-0 mt-0.5"></i>
-        <div class="text-xs text-blue-900 leading-relaxed">
-          <p class="font-bold mb-1">Panduan Setting Aman</p>
-          <ul class="list-disc pl-4 space-y-0.5">
-            <li>Limit utama sekarang berbasis <strong>per-akun</strong>, bukan per-IP.</li>
-            <li>Naikkan <strong>Max Mailbox per Akun</strong> kalau user komplain kuota cepat habis.</li>
-            <li>Durasi mailbox minimal <strong>60 menit</strong> biar user sempat verifikasi.</li>
-            <li>Untuk anti-spam tetap pakai <strong>Captcha</strong> &amp; <strong>Whitelist Provider</strong>.</li>
-            <li>Akun <strong>Owner</strong> otomatis bypass semua limit.</li>
-          </ul>
-        </div>
+      <div class="config-shell">
+        <div id="config-tabs" class="config-tabs"></div>
+        <div id="config-grid" class="config-panel"></div>
       </div>
-
-      <div id="config-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
     </section>
 
     <section id="admin-view-visitors" class="admin-view">
