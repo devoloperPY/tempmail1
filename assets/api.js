@@ -1,3 +1,7 @@
+/**
+ * Sigit TempMail - Cloudflare Worker API Wrapper
+ */
+
 const API_BASE_URL = 'https://sigit-tunnel.sigit-temp-api-v1.workers.dev';
 
 const STORAGE_KEYS = {
@@ -43,11 +47,11 @@ function showBannedModal(reason) {
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'banned-alert-modal';
-    modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm';
+    modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm';
     document.body.appendChild(modal);
   }
   modal.innerHTML = `
-    <div class="glass-card rounded-2xl p-6 max-w-md w-full border-t-4 border-red-500 text-center animate-fade-in bg-white">
+    <div class="glass-card rounded-2xl p-6 max-w-md w-full border-t-4 border-red-500 text-center animate-fade-in">
       <div class="w-14 h-14 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 font-bold text-2xl">!</div>
       <h3 class="text-lg font-bold text-slate-900">Akses Dibatasi (Banned)</h3>
       <p class="text-sm text-slate-600 mt-2">${Utils.escapeHtml(reason || 'Akun atau alamat IP Anda telah dibatasi karena pelanggaran kebijakan anti-abuse.')}</p>
@@ -57,28 +61,6 @@ function showBannedModal(reason) {
       </div>
     </div>
   `;
-}
-
-function showKillSwitchScreen(message) {
-  if (document.getElementById('kill-switch-overlay')) return;
-  
-  const overlay = document.createElement('div');
-  overlay.id = 'kill-switch-overlay';
-  overlay.className = 'fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900 text-white text-center';
-  overlay.innerHTML = `
-    <div class="max-w-md animate-fade-in">
-      <div class="w-20 h-20 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center mx-auto mb-6">
-        <i data-lucide="server-off" class="w-10 h-10"></i>
-      </div>
-      <h1 class="text-3xl font-black mb-3">Server Nonaktif</h1>
-      <p class="text-sm text-slate-400 mb-8 leading-relaxed">${Utils.escapeHtml(message || 'Maaf, layanan sedang dimatikan sementara oleh Admin. Silakan kembali lagi nanti.')}</p>
-      <a href="login.html" onclick="localStorage.clear()" class="px-6 py-3 bg-white text-slate-900 rounded-xl text-sm font-bold hover:bg-slate-200 transition inline-block">
-        Kembali ke Login
-      </a>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  if (window.lucide) window.lucide.createIcons();
 }
 
 async function apiFetch(endpoint, options = {}) {
@@ -106,17 +88,11 @@ async function apiFetch(endpoint, options = {}) {
 
     let payload = null;
     const contentType = response.headers.get('content-type') || '';
-    
     if (contentType.includes('application/json')) {
       payload = await response.json();
     } else {
       const text = await response.text();
       payload = { success: response.ok, error: text || response.statusText };
-    }
-
-    if (response.status === 503) {
-      showKillSwitchScreen(payload?.error || 'Layanan sedang dinonaktifkan sementara.');
-      throw new Error('Server nonaktif');
     }
 
     if (!response.ok || (payload && payload.success === false)) {
@@ -145,6 +121,10 @@ async function apiFetch(endpoint, options = {}) {
         }
       } else if (response.status === 429) {
         Utils.showToast(errMsg || 'Terlalu banyak permintaan (Rate Limit). Coba lagi beberapa saat.', 'warning');
+      } else if (response.status === 503 && payload && payload.maintenance) {
+        window.dispatchEvent(new CustomEvent('maintenance-active', {
+          detail: { message: errMsg }
+        }));
       }
 
       const error = new Error(errMsg);
@@ -155,16 +135,8 @@ async function apiFetch(endpoint, options = {}) {
 
     return payload;
   } catch (err) {
-    if (err.message === 'Server nonaktif') {
-      throw err;
-    }
-    
     if (!err.status) {
-      if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-        showKillSwitchScreen('Koneksi ke server terputus. Kemungkinan server sedang offline atau dinonaktifkan.');
-      } else {
-        err.message = err.message || 'Gagal terhubung ke server API.';
-      }
+      err.message = err.message || 'Gagal terhubung ke server API.';
     }
     throw err;
   }
@@ -178,4 +150,3 @@ window.setToken = setToken;
 window.clearToken = clearToken;
 window.isLoggedIn = isLoggedIn;
 window.getCurrentUser = getCurrentUser;
-window.showKillSwitchScreen = showKillSwitchScreen;
