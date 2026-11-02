@@ -163,12 +163,6 @@
             banner.textContent = data?.data?.banner || '⚠️ Server sedang dalam perbaikan.';
             banner.classList.remove('hidden');
           }
-          
-          const form = document.getElementById('register-form');
-          if (form) {
-            form.style.opacity = '0.3';
-            form.style.pointerEvents = 'none';
-          }
         }
       } catch (e) {
         console.error('Gagal cek status web:', e);
