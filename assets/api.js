@@ -121,6 +121,10 @@ async function apiFetch(endpoint, options = {}) {
         }
       } else if (response.status === 429) {
         Utils.showToast(errMsg || 'Terlalu banyak permintaan (Rate Limit). Coba lagi beberapa saat.', 'warning');
+      } else if (response.status === 503 && payload && payload.maintenance) {
+        window.dispatchEvent(new CustomEvent('maintenance-active', {
+          detail: { message: errMsg }
+        }));
       }
 
       const error = new Error(errMsg);
