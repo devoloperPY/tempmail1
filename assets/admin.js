@@ -13,6 +13,8 @@
     currentUserPoints: 0,
     visitors: [],
     configs: {},
+    configsGroups: null,
+    activeConfigGroup: null,
     initialized: false,
     bootstrapped: false
   };
@@ -746,35 +748,44 @@
   }
 
   const CONFIG_KEYS = [
-    { key: 'signup_bonus_points', label: 'Bonus Signup', unit: 'poin', hint: 'Poin yang didapat user baru setelah verifikasi email.', group: 'Poin & Subdomain', icon: 'gift' },
-    { key: 'subdomain_pointing_cost', label: 'Biaya Subdomain Pointing', unit: 'poin', hint: 'Biaya sekali buat subdomain pointing (CNAME/A).', group: 'Poin & Subdomain', icon: 'link' },
-    { key: 'subdomain_termux_cost', label: 'Biaya Subdomain Termux', unit: 'poin', hint: 'Biaya sekali buat subdomain termux tunnel.', group: 'Poin & Subdomain', icon: 'terminal' },
-    { key: 'free_max_active_subdomain', label: 'Max Subdomain Aktif (Free)', unit: 'slot', hint: 'Batas subdomain aktif bersamaan untuk user Free.', group: 'Poin & Subdomain', icon: 'layers' },
-    { key: 'premium_max_active_subdomain', label: 'Max Subdomain Aktif (Premium)', unit: 'slot', hint: 'Batas subdomain aktif untuk user Premium.', group: 'Poin & Subdomain', icon: 'layers' },
+    { key: 'signup_bonus_points', label: 'Bonus Signup', unit: 'poin', group: 'Poin & Subdomain' },
+    { key: 'subdomain_pointing_cost', label: 'Biaya Subdomain Pointing', unit: 'poin', group: 'Poin & Subdomain' },
+    { key: 'subdomain_termux_cost', label: 'Biaya Subdomain Termux', unit: 'poin', group: 'Poin & Subdomain' },
+    { key: 'free_max_active_subdomain', label: 'Max Subdomain Aktif (Free)', unit: 'slot', group: 'Poin & Subdomain' },
+    { key: 'premium_max_active_subdomain', label: 'Max Subdomain Aktif (Premium)', unit: 'slot', group: 'Poin & Subdomain' },
 
-    { key: 'mailbox_duration_minutes', label: 'Durasi Mailbox Default', unit: 'menit', hint: 'Durasi mailbox kalau tidak di-set per-user.', group: 'Mailbox', icon: 'clock' },
-    { key: 'max_messages_per_mailbox', label: 'Max Pesan per Mailbox', unit: 'pesan', hint: 'Batas pesan masuk per mailbox (default global).', group: 'Mailbox', icon: 'message-square' },
-    { key: 'max_concurrent_mailbox', label: 'Max Mailbox Aktif per Akun', unit: 'mailbox', hint: 'Berapa mailbox aktif yang bisa dimiliki 1 akun bersamaan.', group: 'Mailbox', icon: 'inbox' },
-    { key: 'global_max_mailbox_per_day', label: 'Global Max Mailbox / Hari', unit: 'mailbox', hint: 'Total semua mailbox yang boleh dibuat hari ini (proteksi server).', group: 'Mailbox', icon: 'shield' },
+    { key: 'mailbox_duration_minutes', label: 'Durasi Mailbox Default', unit: 'menit', group: 'Mailbox' },
+    { key: 'max_messages_per_mailbox', label: 'Max Pesan per Mailbox', unit: 'pesan', group: 'Mailbox' },
+    { key: 'max_concurrent_mailbox', label: 'Max Mailbox Aktif per Akun', unit: 'mailbox', group: 'Mailbox' },
+    { key: 'global_max_mailbox_per_day', label: 'Global Max Mailbox / Hari', unit: 'mailbox', group: 'Mailbox' },
 
-    { key: 'free_user_daily_limit', label: 'Free: Limit Mailbox / Hari', unit: 'mailbox', hint: 'Kuota harian user tier Free.', group: 'Limit per Akun (Free)', icon: 'user' },
-    { key: 'free_user_mailbox_duration', label: 'Free: Durasi Mailbox', unit: 'menit', hint: 'Berapa lama mailbox bertahan di tier Free.', group: 'Limit per Akun (Free)', icon: 'clock' },
-    { key: 'free_user_max_messages', label: 'Free: Max Pesan', unit: 'pesan', hint: 'Maksimal pesan yang bisa masuk ke mailbox Free.', group: 'Limit per Akun (Free)', icon: 'message-square' },
+    { key: 'free_user_daily_limit', label: 'Free: Limit Mailbox / Hari', unit: 'mailbox', group: 'Limit per Akun (Free)' },
+    { key: 'free_user_mailbox_duration', label: 'Free: Durasi Mailbox', unit: 'menit', group: 'Limit per Akun (Free)' },
+    { key: 'free_user_max_messages', label: 'Free: Max Pesan', unit: 'pesan', group: 'Limit per Akun (Free)' },
 
-    { key: 'premium_user_daily_limit', label: 'Premium: Limit Mailbox / Hari', unit: 'mailbox', hint: 'Kuota harian user tier Premium.', group: 'Limit per Akun (Premium)', icon: 'crown' },
-    { key: 'premium_user_mailbox_duration', label: 'Premium: Durasi Mailbox', unit: 'menit', hint: 'Berapa lama mailbox bertahan di tier Premium.', group: 'Limit per Akun (Premium)', icon: 'clock' },
-    { key: 'premium_user_max_messages', label: 'Premium: Max Pesan', unit: 'pesan', hint: 'Maksimal pesan yang bisa masuk ke mailbox Premium.', group: 'Limit per Akun (Premium)', icon: 'message-square' },
+    { key: 'premium_user_daily_limit', label: 'Premium: Limit Mailbox / Hari', unit: 'mailbox', group: 'Limit per Akun (Premium)' },
+    { key: 'premium_user_mailbox_duration', label: 'Premium: Durasi Mailbox', unit: 'menit', group: 'Limit per Akun (Premium)' },
+    { key: 'premium_user_max_messages', label: 'Premium: Max Pesan', unit: 'pesan', group: 'Limit per Akun (Premium)' },
 
-    { key: 'max_accounts_per_ip', label: 'Max Akun per IP', unit: 'akun', hint: 'Batas pendaftaran akun dari 1 IP (anti-spam).', group: 'Keamanan', icon: 'network' },
-    { key: 'max_accounts_per_device', label: 'Max Akun per Device', unit: 'akun', hint: 'Batas pendaftaran akun dari 1 device (fingerprint).', group: 'Keamanan', icon: 'smartphone' },
-    { key: 'captcha_enabled', label: 'Captcha Aktif', unit: '1/0', hint: 'Aktifkan Turnstile saat register & login (1 = ya, 0 = tidak).', group: 'Keamanan', icon: 'shield-check' },
-    { key: 'email_whitelist_enabled', label: 'Whitelist Provider Aktif', unit: '1/0', hint: 'Hanya izinkan email dari Gmail, Outlook, Yahoo, dll (1/0).', group: 'Keamanan', icon: 'filter' },
+    { key: 'max_accounts_per_ip', label: 'Max Akun per IP', unit: 'akun', group: 'Keamanan' },
+    { key: 'max_accounts_per_device', label: 'Max Akun per Device', unit: 'akun', group: 'Keamanan' },
+    { key: 'captcha_enabled', label: 'Captcha Aktif', unit: '1/0', group: 'Keamanan' },
+    { key: 'email_whitelist_enabled', label: 'Whitelist Provider Aktif', unit: '1/0', group: 'Keamanan' },
 
-    { key: 'maintenance_mode', label: 'Mode Maintenance', unit: '1/0', hint: 'Aktifkan untuk menutup sementara layanan (1/0).', group: 'Sistem', icon: 'wrench' },
-    { key: 'web_enabled', label: 'Web Aktif', unit: '1/0', hint: 'Matikan (0) untuk mematikan layanan sepenuhnya.', group: 'Sistem', icon: 'power' },
-    { key: 'require_login', label: 'Wajib Login', unit: '1/0', hint: 'Jika 1, user harus login untuk akses mailbox.', group: 'Sistem', icon: 'lock' },
-    { key: 'broadcast_banner', label: 'Broadcast Banner', unit: 'teks', hint: 'Pesan yang muncul di atas dashboard semua user.', group: 'Sistem', icon: 'megaphone' }
+    { key: 'maintenance_mode', label: 'Mode Maintenance', unit: '1/0', group: 'Sistem' },
+    { key: 'web_enabled', label: 'Web Aktif', unit: '1/0', group: 'Sistem' },
+    { key: 'require_login', label: 'Wajib Login', unit: '1/0', group: 'Sistem' },
+    { key: 'broadcast_banner', label: 'Broadcast Banner', unit: 'teks', group: 'Sistem' }
   ];
+
+  const CONFIG_GROUP_ICONS = {
+    'Poin & Subdomain': 'coins',
+    'Mailbox': 'inbox',
+    'Limit per Akun (Free)': 'user',
+    'Limit per Akun (Premium)': 'crown',
+    'Keamanan': 'shield',
+    'Sistem': 'settings'
+  };
 
   function renderConfigField(c, map) {
     const val = map[c.key] !== undefined ? map[c.key] : '';
@@ -783,77 +794,71 @@
 
     if (isBool) {
       return `
-        <div class="config-field-item">
-          <div class="flex items-start justify-between gap-2 mb-1">
-            <div class="flex items-center gap-1.5 min-w-0">
-              <i data-lucide="${c.icon}" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
-              <label class="admin-field-label mb-0 truncate">${esc(c.label)}</label>
-            </div>
-            <span class="config-unit-badge">${esc(c.unit)}</span>
+        <div class="config-field">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <label class="admin-field-label mb-0">${esc(c.label)}</label>
+            <span class="config-unit">${esc(c.unit)}</span>
           </div>
           <label class="config-toggle-wrap">
             <input type="checkbox" data-config-key="${esc(c.key)}" data-config-type="bool" ${isOn ? 'checked' : ''} class="config-toggle-input" />
             <span class="config-toggle-slider"></span>
             <span class="config-toggle-label">${isOn ? 'Aktif' : 'Nonaktif'}</span>
           </label>
-          ${c.hint ? `<p class="config-hint">${esc(c.hint)}</p>` : ''}
         </div>`;
     }
 
     return `
-      <div class="config-field-item">
-        <div class="flex items-start justify-between gap-2 mb-1">
-          <div class="flex items-center gap-1.5 min-w-0">
-            <i data-lucide="${c.icon}" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
-            <label class="admin-field-label mb-0 truncate">${esc(c.label)}</label>
-          </div>
-          <span class="config-unit-badge">${esc(c.unit)}</span>
+      <div class="config-field">
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <label class="admin-field-label mb-0">${esc(c.label)}</label>
+          <span class="config-unit">${esc(c.unit)}</span>
         </div>
-        <input type="text" data-config-key="${esc(c.key)}" data-config-type="text" value="${esc(val)}" class="admin-field-input config-input" />
-        ${c.hint ? `<p class="config-hint">${esc(c.hint)}</p>` : ''}
+        <input type="text" data-config-key="${esc(c.key)}" data-config-type="text" value="${esc(val)}" class="admin-field-input" />
       </div>`;
   }
 
-  function renderConfigGroup(groupName, items, map) {
-    const groupIcons = {
-      'Poin & Subdomain': 'coins',
-      'Mailbox': 'inbox',
-      'Limit per Akun (Free)': 'user',
-      'Limit per Akun (Premium)': 'crown',
-      'Keamanan': 'shield',
-      'Sistem': 'settings'
-    };
-    const icon = groupIcons[groupName] || 'folder';
-    const accent = {
-      'Poin & Subdomain': 'amber',
-      'Mailbox': 'purple',
-      'Limit per Akun (Free)': 'blue',
-      'Limit per Akun (Premium)': 'emerald',
-      'Keamanan': 'red',
-      'Sistem': 'slate'
-    }[groupName] || 'slate';
+  function renderConfigTab(groupName) {
+    state.activeConfigGroup = groupName;
+    const tabs = $('config-tabs');
+    const panel = $('config-grid');
+    if (!tabs || !panel || !state.configsGroups) return;
 
-    return `
-      <div class="config-group-card config-accent-${accent}">
-        <div class="config-group-head">
-          <div class="config-group-icon config-icon-${accent}">
-            <i data-lucide="${icon}" class="w-4 h-4"></i>
-          </div>
-          <div class="min-w-0">
-            <h3 class="config-group-title">${esc(groupName)}</h3>
-            <p class="config-group-count">${items.length} pengaturan</p>
-          </div>
-        </div>
-        <div class="config-group-body">
-          ${items.map(c => renderConfigField(c, map)).join('')}
-        </div>
-      </div>`;
+    const groups = state.configsGroups;
+
+    tabs.innerHTML = Object.keys(groups).map(name => {
+      const icon = CONFIG_GROUP_ICONS[name] || 'folder';
+      const active = name === groupName ? 'active' : '';
+      return `<button class="config-tab ${active}" data-group="${esc(name)}" onclick="switchConfigTab('${esc(name)}')">
+        <i data-lucide="${icon}" class="w-4 h-4"></i>
+        <span>${esc(name)}</span>
+      </button>`;
+    }).join('');
+
+    const items = groups[groupName] || [];
+    panel.innerHTML = items.map(c => renderConfigField(c, state.configs)).join('');
+
+    panel.querySelectorAll('.config-toggle-input').forEach(inp => {
+      inp.addEventListener('change', function () {
+        const label = this.parentElement.querySelector('.config-toggle-label');
+        if (label) label.textContent = this.checked ? 'Aktif' : 'Nonaktif';
+      });
+    });
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  function switchConfigTab(name) {
+    if (state.configsGroups) {
+      renderConfigTab(name);
+    }
   }
 
   async function loadConfig() {
-    const grid = $('config-grid');
-    if (!grid) return;
-    grid.innerHTML = '<div class="admin-skeleton h-24 w-full rounded-xl"></div><div class="admin-skeleton h-24 w-full rounded-xl"></div>';
+    const panel = $('config-grid');
+    const tabs = $('config-tabs');
+    if (!panel) return;
+    panel.innerHTML = '<div class="admin-skeleton h-24 w-full rounded-xl"></div>';
+    if (tabs) tabs.innerHTML = '';
 
     try {
       const res = await apiFetch('/api/admin/web/config');
@@ -868,20 +873,15 @@
         groups[c.group].push(c);
       });
 
-      grid.innerHTML = Object.keys(groups).map(groupName =>
-        renderConfigGroup(groupName, groups[groupName], map)
-      ).join('');
+      state.configsGroups = groups;
 
-      grid.querySelectorAll('.config-toggle-input').forEach(inp => {
-        inp.addEventListener('change', function () {
-          const label = this.parentElement.querySelector('.config-toggle-label');
-          if (label) label.textContent = this.checked ? 'Aktif' : 'Nonaktif';
-        });
-      });
+      const firstGroup = state.activeConfigGroup && groups[state.activeConfigGroup]
+        ? state.activeConfigGroup
+        : Object.keys(groups)[0];
 
-      if (window.lucide) window.lucide.createIcons();
+      renderConfigTab(firstGroup);
     } catch (err) {
-      grid.innerHTML = `<p class="text-xs text-red-500 p-4">${esc(err.message)}</p>`;
+      panel.innerHTML = `<p class="text-xs text-red-500 p-4">${esc(err.message)}</p>`;
     }
   }
 
@@ -930,7 +930,7 @@
     try {
       await apiFetch('/api/admin/web/config', { method: 'PATCH', body: payload });
       adminToast('Konfigurasi tersimpan (' + Object.keys(payload).length + ' field)', 'success');
-      loadConfig();
+      await loadConfig();
     } catch (err) {
       adminToast(err.message, 'error');
     } finally {
@@ -1129,6 +1129,7 @@
   window.toggleDomainRouting = toggleDomainRouting;
   window.loadConfig = loadConfig;
   window.saveConfig = saveConfig;
+  window.switchConfigTab = switchConfigTab;
   window.loadVisitors = loadVisitors;
   window.openBlockIpModal = openBlockIpModal;
   window.submitBlockIp = submitBlockIp;
