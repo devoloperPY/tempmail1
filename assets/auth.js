@@ -51,12 +51,35 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(overlay);
   }
 
-  window.addEventListener('maintenance-active', function (e) {
-    const msg = (e.detail && e.detail.message) ? e.detail.message : '';
-    showMaintenanceOverlay(msg);
-  });
+  if (page !== 'login' && page !== 'register') {
+    window.addEventListener('maintenance-active', function (e) {
+      const msg = (e.detail && e.detail.message) ? e.detail.message : '';
+      showMaintenanceOverlay(msg);
+    });
+
+    apiFetch('/api/web/stats', { skipAuthRedirect: true })
+      .then(function(res) {
+        const d = res && res.data;
+        if (d && (d.enabled === false || d.maintenance === true)) {
+          showMaintenanceOverlay(d.banner || 'Sistem sedang dalam perbaikan.');
+        }
+      })
+      .catch(function() {});
+  }
+
+  const warningBanner = document.getElementById('server-warning-banner');
 
   if (page === 'login' || page === 'register') {
+    apiFetch('/api/web/stats', { skipAuthRedirect: true })
+      .then(function(res) {
+        const d = res && res.data;
+        if (d && (d.enabled === false || d.maintenance === true) && warningBanner) {
+          warningBanner.classList.remove('hidden');
+          if (window.lucide) window.lucide.createIcons();
+        }
+      })
+      .catch(function() {});
+
     if (isLoggedIn()) {
       apiFetch('/api/web/auth/me', { skipAuthRedirect: true })
         .then(function(res) {
@@ -74,11 +97,23 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const errorBox = document.getElementById('auth-error-box');
-  function showAuthError(msg) {
+  
+  function showAuthError(msg, isMaintenance = false) {
+    if (isMaintenance) {
+      if (warningBanner) {
+        warningBanner.classList.remove('hidden');
+        if (window.lucide) window.lucide.createIcons();
+      }
+      if (errorBox) errorBox.classList.add('hidden');
+      return;
+    }
+
     if (!errorBox) return;
     errorBox.textContent = msg;
+    errorBox.className = 'p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium';
     errorBox.classList.remove('hidden');
   }
+  
   function clearAuthError() {
     if (!errorBox) return;
     errorBox.classList.add('hidden');
@@ -185,12 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 800);
       } catch (err) {
         const isMaintenance = err.status === 503 || (err.data && err.data.maintenance);
-        if (isMaintenance) {
-          showMaintenanceOverlay(err.message);
-          if (errorBox) errorBox.classList.add('hidden');
-        } else {
-          showAuthError(err.message || 'Pendaftaran gagal.');
-        }
+        showAuthError(err.message || 'Pendaftaran gagal.', isMaintenance);
         if (window.turnstile) window.turnstile.reset();
         window.turnstileToken = '';
       } finally {
@@ -261,12 +291,9 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         const msg = err.message || 'Kode OTP salah atau kadaluarsa.';
         const isMaintenance = err.status === 503 || (err.data && err.data.maintenance);
-        if (isMaintenance) {
-          showMaintenanceOverlay(msg);
-          if (errorBox) errorBox.classList.add('hidden');
-        } else {
-          showAuthError(msg);
-        }
+        
+        showAuthError(msg, isMaintenance);
+        
         if (err.status === 429 || msg.toLowerCase().includes('terlalu banyak') || msg.toLowerCase().includes('too many')) {
           otpInput.disabled = true;
           btnVerify.disabled = true;
@@ -295,11 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       } catch (err) {
         const isMaintenance = err.status === 503 || (err.data && err.data.maintenance);
-        if (isMaintenance) {
-          showMaintenanceOverlay(err.message);
-        } else {
-          showAuthError(err.message || 'Gagal mengirim ulang OTP.');
-        }
+        showAuthError(err.message || 'Gagal mengirim ulang OTP.', isMaintenance);
       } finally {
         Utils.hideLoading();
       }
@@ -349,7 +372,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (err) {
         const msg = err.message || 'Email atau password salah.';
         const isMaintenance = err.status === 503 || (err.data && err.data.maintenance);
-
+        
         if (isMaintenance) {
           if (err.data && err.data.data && err.data.data.user && err.data.data.token) {
             setToken(err.data.data.token, err.data.data.user);
@@ -358,8 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
               window.location.href = 'admin.html';
             }, 800);
           } else {
-            showMaintenanceOverlay(msg);
-            if (errorBox) errorBox.classList.add('hidden');
+            showAuthError(msg, true);
           }
         } else {
           showAuthError(msg);
@@ -424,11 +446,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1200);
       } catch (err) {
         const isMaintenance = err.status === 503 || (err.data && err.data.maintenance);
-        if (isMaintenance) {
-          showMaintenanceOverlay(err.message);
-          if (errBox) errBox.classList.add('hidden');
-        } else {
-          if (errBox) {
+        if (errBox) {
+          if (isMaintenance) {
+            showAuthError(err.message, true);
+          } else {
             errBox.textContent = err.message || 'Gagal mengirim kode reset.';
             errBox.classList.remove('hidden');
           }
@@ -547,11 +568,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1800);
       } catch (err) {
         const isMaintenance = err.status === 503 || (err.data && err.data.maintenance);
-        if (isMaintenance) {
-          showMaintenanceOverlay(err.message);
-          if (errBox) errBox.classList.add('hidden');
-        } else {
-          if (errBox) {
+        if (errBox) {
+          if (isMaintenance) {
+            showAuthError(err.message, true);
+          } else {
             errBox.textContent = err.message || 'Gagal reset password.';
             errBox.classList.remove('hidden');
           }
