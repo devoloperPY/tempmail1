@@ -344,7 +344,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const msg = err.message || 'Email atau password salah.';
         
         if (err.status === 503) {
-          showMaintenanceOverlay(msg);
+          if (err.data && err.data.data && err.data.data.user && err.data.data.token) {
+            setToken(err.data.data.token, err.data.data.user);
+            Utils.showToast('Owner bypass diterima. Mengalihkan ke Admin...', 'success');
+            setTimeout(() => {
+              window.location.href = 'admin.html';
+            }, 800);
+          } else {
+            showMaintenanceOverlay(msg);
+          }
         } else {
           showAuthError(msg);
         }
