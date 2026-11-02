@@ -51,7 +51,6 @@
         <p class="text-xs sm:text-sm text-slate-500">Masuk ke dashboard untuk menikmati kuota email ekstra.</p>
       </div>
 
-      <div id="global-banner" class="hidden p-3.5 rounded-2xl bg-amber-500 text-white text-xs font-bold text-center shadow-md"></div>
       <div id="auth-error-box" class="hidden p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium"></div>
 
       <form id="login-form" class="space-y-4" novalidate>
@@ -116,33 +115,5 @@
   <script src="assets/utils.js"></script>
   <script src="assets/api.js"></script>
   <script src="assets/auth.js"></script>
-  
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      try {
-        const res = await fetch(API_BASE_URL + '/api/web/stats');
-        
-        if (res.status === 503) {
-          const errData = await res.json();
-          if (typeof showKillSwitchScreen === 'function') {
-            showKillSwitchScreen(errData.error);
-          }
-          return;
-        }
-
-        const data = await res.json();
-        
-        if (data?.data?.maintenance) {
-          const banner = document.getElementById('global-banner');
-          if (banner) {
-            banner.textContent = data?.data?.banner || '⚠️ Server sedang dalam perbaikan.';
-            banner.classList.remove('hidden');
-          }
-        }
-      } catch (e) {
-        console.error('Gagal cek status web:', e);
-      }
-    });
-  </script>
 </body>
 </html>
