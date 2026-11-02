@@ -457,14 +457,26 @@ body.admin-body {
 
   .config-tabs {
     width: 100%;
+    display: flex;
     flex-direction: row;
+    gap: 6px;
+    padding: 8px;
     overflow-x: auto;
-    padding: 6px;
+    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
   }
 
   .config-tabs::-webkit-scrollbar {
-    height: 3px;
+    height: 4px;
+  }
+
+  .config-tabs::-webkit-scrollbar-track {
+    background: transparent;
   }
 
   .config-tabs::-webkit-scrollbar-thumb {
@@ -473,15 +485,40 @@ body.admin-body {
   }
 
   .config-tab {
+    flex: 0 0 auto;
     white-space: nowrap;
-    flex-shrink: 0;
-    padding: 8px 12px;
-    font-size: 11px;
+    padding: 10px 14px;
+    font-size: 12px;
+    border-radius: 8px;
+    min-width: auto;
+    width: auto;
+    justify-content: flex-start;
+  }
+
+  .config-tab span {
+    display: inline;
+    white-space: nowrap;
   }
 
   .config-panel {
     grid-template-columns: 1fr;
     width: 100%;
     padding: 14px;
+  }
+
+  .config-field {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 380px) {
+  .config-tab {
+    padding: 9px 12px;
+    font-size: 11px;
+  }
+
+  .config-tab i {
+    width: 14px;
+    height: 14px;
   }
 }
