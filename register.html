@@ -51,8 +51,6 @@
         <p class="text-xs text-slate-500">Dapatkan kuota harian lebih besar & manajemen inbox lengkap.</p>
       </div>
 
-      <div id="global-banner" class="hidden p-3.5 rounded-2xl bg-amber-500 text-white text-xs font-bold text-center shadow-md"></div>
-
       <div class="p-3.5 rounded-2xl bg-blue-50/90 border border-blue-200/80 flex items-start gap-2.5 text-xs text-blue-800">
         <i data-lucide="info" class="w-4 h-4 text-blue-600 shrink-0 mt-0.5"></i>
         <span>Hanya email dari provider terpercaya (<strong>Gmail, Outlook, Yahoo, iCloud</strong>, dll). Email disposable akan ditolak otomatis.</span>
@@ -141,33 +139,5 @@
   <script src="assets/utils.js"></script>
   <script src="assets/api.js"></script>
   <script src="assets/auth.js"></script>
-  
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      try {
-        const res = await fetch(API_BASE_URL + '/api/web/stats');
-        
-        if (res.status === 503) {
-          const errData = await res.json();
-          if (typeof showKillSwitchScreen === 'function') {
-            showKillSwitchScreen(errData.error);
-          }
-          return;
-        }
-
-        const data = await res.json();
-        
-        if (data?.data?.maintenance) {
-          const banner = document.getElementById('global-banner');
-          if (banner) {
-            banner.textContent = data?.data?.banner || '⚠️ Server sedang dalam perbaikan.';
-            banner.classList.remove('hidden');
-          }
-        }
-      } catch (e) {
-        console.error('Gagal cek status web:', e);
-      }
-    });
-  </script>
 </body>
 </html>
