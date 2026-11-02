@@ -1,7 +1,3 @@
-/**
- * Sigit TempMail - Cloudflare Worker API Wrapper
- */
-
 const API_BASE_URL = 'https://sigit-tunnel.sigit-temp-api-v1.workers.dev';
 
 const STORAGE_KEYS = {
@@ -11,35 +7,21 @@ const STORAGE_KEYS = {
   PENDING_EMAIL: 'pending_email'
 };
 
-function getToken() {
-  return localStorage.getItem(STORAGE_KEYS.TOKEN);
-}
-
+function getToken() { return localStorage.getItem(STORAGE_KEYS.TOKEN); }
 function setToken(token, user = null) {
-  if (token) {
-    localStorage.setItem(STORAGE_KEYS.TOKEN, token);
-  }
-  if (user) {
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
-  }
+  if (token) localStorage.setItem(STORAGE_KEYS.TOKEN, token);
+  if (user) localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
 }
-
 function clearToken() {
   localStorage.removeItem(STORAGE_KEYS.TOKEN);
   localStorage.removeItem(STORAGE_KEYS.USER);
 }
-
-function isLoggedIn() {
-  return Boolean(getToken());
-}
-
+function isLoggedIn() { return Boolean(getToken()); }
 function getCurrentUser() {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.USER);
     return raw ? JSON.parse(raw) : null;
-  } catch (e) {
-    return null;
-  }
+  } catch (e) { return null; }
 }
 
 function showBannedModal(reason) {
@@ -47,11 +29,11 @@ function showBannedModal(reason) {
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'banned-alert-modal';
-    modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm';
+    modal.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm';
     document.body.appendChild(modal);
   }
   modal.innerHTML = `
-    <div class="glass-card rounded-2xl p-6 max-w-md w-full border-t-4 border-red-500 text-center animate-fade-in">
+    <div class="glass-card rounded-2xl p-6 max-w-md w-full border-t-4 border-red-500 text-center animate-fade-in bg-white">
       <div class="w-14 h-14 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 font-bold text-2xl">!</div>
       <h3 class="text-lg font-bold text-slate-900">Akses Dibatasi (Banned)</h3>
       <p class="text-sm text-slate-600 mt-2">${Utils.escapeHtml(reason || 'Akun atau alamat IP Anda telah dibatasi karena pelanggaran kebijakan anti-abuse.')}</p>
@@ -63,12 +45,35 @@ function showBannedModal(reason) {
   `;
 }
 
+function showKillSwitchBanner(message) {
+  const banner = document.getElementById('global-banner');
+  if (banner) {
+    banner.innerHTML = `
+      <div class="p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium shadow-sm flex items-start gap-2.5">
+        <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0 mt-0.5"></i>
+        <div>
+          <strong class="block text-sm font-bold text-red-800 mb-0.5">Server Dinonaktifkan</strong>
+          <span>${Utils.escapeHtml(message || 'Maaf, layanan sedang dimatikan sementara oleh Admin. Silakan kembali lagi nanti.')}</span>
+        </div>
+      </div>
+    `;
+    banner.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
+  } else {
+    let wrap = document.getElementById('kill-switch-banner-top');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'kill-switch-banner-top';
+      wrap.className = 'fixed top-0 left-0 right-0 z-[99999] bg-red-600 text-white text-center text-xs font-bold py-2 shadow-md';
+      document.body.prepend(wrap);
+    }
+    wrap.innerText = message || 'Server sedang dinonaktifkan sementara.';
+  }
+}
+
 async function apiFetch(endpoint, options = {}) {
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
-  const headers = {
-    'Accept': 'application/json',
-    ...(options.headers || {})
-  };
+  const headers = { 'Accept': 'application/json', ...(options.headers || {}) };
 
   if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
@@ -76,18 +81,14 @@ async function apiFetch(endpoint, options = {}) {
   }
 
   const token = getToken();
-  if (token && !headers['Authorization']) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
+  if (token && !headers['Authorization']) headers['Authorization'] = `Bearer ${token}`;
 
   try {
-    const response = await fetch(url, {
-      ...options,
-      headers
-    });
+    const response = await fetch(url, { ...options, headers });
 
     let payload = null;
     const contentType = response.headers.get('content-type') || '';
+    
     if (contentType.includes('application/json')) {
       payload = await response.json();
     } else {
@@ -95,36 +96,29 @@ async function apiFetch(endpoint, options = {}) {
       payload = { success: response.ok, error: text || response.statusText };
     }
 
+    if (response.status === 503) {
+      showKillSwitchBanner(payload?.error || 'Layanan sedang dinonaktifkan sementara.');
+      throw new Error('Server nonaktif');
+    }
+
     if (!response.ok || (payload && payload.success === false)) {
       const errMsg = (payload && (payload.error || payload.message)) || `Terjadi kesalahan (${response.status})`;
-
       const isMeEndpoint = url.includes('/api/web/auth/me');
 
       if (response.status === 401) {
-        if (!isMeEndpoint) {
-          clearToken();
-        }
+        if (!isMeEndpoint) clearToken();
         if (!options.skipAuthRedirect && !isMeEndpoint) {
           const path = window.location.pathname;
-          if (!path.includes('login') && !path.includes('register') && !path.includes('verify')) {
-            Utils.showToast('Sesi Anda telah berakhir. Silakan login kembali.', 'warning');
-            setTimeout(() => {
-              window.location.href = 'login.html';
-            }, 900);
+          if (!path.includes('login') && !path.includes('register')) {
+            Utils.showToast('Sesi berakhir. Silakan login kembali.', 'warning');
+            setTimeout(() => { window.location.href = 'login.html'; }, 900);
           }
         }
       } else if (response.status === 403) {
-        if (errMsg.toLowerCase().includes('ban') || errMsg.toLowerCase().includes('suspend') || errMsg.toLowerCase().includes('blocked')) {
-          showBannedModal(errMsg);
-        } else {
-          Utils.showToast(errMsg, 'error');
-        }
+        if (errMsg.toLowerCase().includes('ban')) showBannedModal(errMsg);
+        else Utils.showToast(errMsg, 'error');
       } else if (response.status === 429) {
-        Utils.showToast(errMsg || 'Terlalu banyak permintaan (Rate Limit). Coba lagi beberapa saat.', 'warning');
-      } else if (response.status === 503 && payload && payload.maintenance) {
-        window.dispatchEvent(new CustomEvent('maintenance-active', {
-          detail: { message: errMsg }
-        }));
+        Utils.showToast(errMsg || 'Terlalu banyak permintaan.', 'warning');
       }
 
       const error = new Error(errMsg);
@@ -135,8 +129,13 @@ async function apiFetch(endpoint, options = {}) {
 
     return payload;
   } catch (err) {
+    if (err.message === 'Server nonaktif') throw err;
     if (!err.status) {
-      err.message = err.message || 'Gagal terhubung ke server API.';
+      if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+        showKillSwitchBanner('Koneksi ke server terputus. Kemungkinan server sedang offline.');
+      } else {
+        err.message = err.message || 'Gagal terhubung ke server.';
+      }
     }
     throw err;
   }
@@ -150,3 +149,4 @@ window.setToken = setToken;
 window.clearToken = clearToken;
 window.isLoggedIn = isLoggedIn;
 window.getCurrentUser = getCurrentUser;
+window.showKillSwitchBanner = showKillSwitchBanner;
