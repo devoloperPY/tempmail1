@@ -56,17 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
     showMaintenanceOverlay(msg);
   });
 
-  apiFetch('/api/web/stats', { skipAuthRedirect: true })
-    .then(function(res) {
-      const d = res && res.data;
-      if (d && (d.enabled === false || d.maintenance === true)) {
-        if (page !== 'login' && page !== 'register') {
-          showMaintenanceOverlay(d.banner || 'Sistem sedang dalam perbaikan.');
-        }
-      }
-    })
-    .catch(function() {});
-
   if (page === 'login' || page === 'register') {
     if (isLoggedIn()) {
       apiFetch('/api/web/auth/me', { skipAuthRedirect: true })
@@ -195,7 +184,13 @@ document.addEventListener('DOMContentLoaded', () => {
           window.location.href = `verify.html?email=${encodeURIComponent(email)}`;
         }, 800);
       } catch (err) {
-        showAuthError(err.message || 'Pendaftaran gagal.');
+        const isMaintenance = err.status === 503 || (err.data && err.data.maintenance);
+        if (isMaintenance) {
+          showMaintenanceOverlay(err.message);
+          if (errorBox) errorBox.classList.add('hidden');
+        } else {
+          showAuthError(err.message || 'Pendaftaran gagal.');
+        }
         if (window.turnstile) window.turnstile.reset();
         window.turnstileToken = '';
       } finally {
@@ -265,7 +260,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 800);
       } catch (err) {
         const msg = err.message || 'Kode OTP salah atau kadaluarsa.';
-        showAuthError(msg);
+        const isMaintenance = err.status === 503 || (err.data && err.data.maintenance);
+        if (isMaintenance) {
+          showMaintenanceOverlay(msg);
+          if (errorBox) errorBox.classList.add('hidden');
+        } else {
+          showAuthError(msg);
+        }
         if (err.status === 429 || msg.toLowerCase().includes('terlalu banyak') || msg.toLowerCase().includes('too many')) {
           otpInput.disabled = true;
           btnVerify.disabled = true;
@@ -293,7 +294,12 @@ document.addEventListener('DOMContentLoaded', () => {
           otpCountdown.textContent = formatted;
         });
       } catch (err) {
-        showAuthError(err.message || 'Gagal mengirim ulang OTP.');
+        const isMaintenance = err.status === 503 || (err.data && err.data.maintenance);
+        if (isMaintenance) {
+          showMaintenanceOverlay(err.message);
+        } else {
+          showAuthError(err.message || 'Gagal mengirim ulang OTP.');
+        }
       } finally {
         Utils.hideLoading();
       }
@@ -342,8 +348,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 600);
       } catch (err) {
         const msg = err.message || 'Email atau password salah.';
-        
-        if (err.status === 503) {
+        const isMaintenance = err.status === 503 || (err.data && err.data.maintenance);
+
+        if (isMaintenance) {
           if (err.data && err.data.data && err.data.data.user && err.data.data.token) {
             setToken(err.data.data.token, err.data.data.user);
             Utils.showToast('Owner bypass diterima. Mengalihkan ke Admin...', 'success');
@@ -352,6 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 800);
           } else {
             showMaintenanceOverlay(msg);
+            if (errorBox) errorBox.classList.add('hidden');
           }
         } else {
           showAuthError(msg);
@@ -415,9 +423,15 @@ document.addEventListener('DOMContentLoaded', () => {
           window.location.href = `reset-password.html?email=${encodeURIComponent(email)}`;
         }, 1200);
       } catch (err) {
-        if (errBox) {
-          errBox.textContent = err.message || 'Gagal mengirim kode reset.';
-          errBox.classList.remove('hidden');
+        const isMaintenance = err.status === 503 || (err.data && err.data.maintenance);
+        if (isMaintenance) {
+          showMaintenanceOverlay(err.message);
+          if (errBox) errBox.classList.add('hidden');
+        } else {
+          if (errBox) {
+            errBox.textContent = err.message || 'Gagal mengirim kode reset.';
+            errBox.classList.remove('hidden');
+          }
         }
         if (window.turnstile) window.turnstile.reset();
         window.turnstileToken = '';
@@ -532,9 +546,15 @@ document.addEventListener('DOMContentLoaded', () => {
           window.location.href = 'login.html';
         }, 1800);
       } catch (err) {
-        if (errBox) {
-          errBox.textContent = err.message || 'Gagal reset password.';
-          errBox.classList.remove('hidden');
+        const isMaintenance = err.status === 503 || (err.data && err.data.maintenance);
+        if (isMaintenance) {
+          showMaintenanceOverlay(err.message);
+          if (errBox) errBox.classList.add('hidden');
+        } else {
+          if (errBox) {
+            errBox.textContent = err.message || 'Gagal reset password.';
+            errBox.classList.remove('hidden');
+          }
         }
         if (btnSubmit) btnSubmit.disabled = false;
       } finally {
