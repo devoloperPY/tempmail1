@@ -30,6 +30,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
   var page = currentPage();
 
+  function showMaintenanceOverlay(message) {
+    if (document.getElementById('maintenance-overlay')) return;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'maintenance-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#f4f7f9;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center;font-family:Inter,sans-serif;flex-direction:column;';
+    
+    overlay.innerHTML = `
+      <div style="background:#ffffff;padding:40px 30px;border-radius:20px;box-shadow:0 10px 40px rgba(0,0,0,0.08);max-width:400px;width:100%;border:1px solid #e2e8f0;">
+        <div style="width:64px;height:64px;background:#fef2f2;color:#ef4444;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        </div>
+        <h2 style="font-size:20px;font-weight:800;color:#0f172a;margin:0 0 10px 0;">Server Maintenance</h2>
+        <p style="font-size:13px;color:#64748b;line-height:1.6;margin:0 0 24px 0;">${Utils.escapeHtml(message || 'Sistem sedang dimatikan sementara untuk pemeliharaan. Silakan coba lagi nanti.')}</p>
+        <button onclick="window.location.reload()" style="background:#1e293b;color:#ffffff;border:none;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;width:100%;">Coba Lagi</button>
+      </div>
+    `;
+    
+    document.body.appendChild(overlay);
+  }
+
+  window.addEventListener('maintenance-active', function (e) {
+    const msg = (e.detail && e.detail.message) ? e.detail.message : '';
+    showMaintenanceOverlay(msg);
+  });
+
+  apiFetch('/api/web/stats', { skipAuthRedirect: true })
+    .then(function(res) {
+      const d = res && res.data;
+      if (d && (d.enabled === false || d.maintenance === true)) {
+        if (page !== 'login' && page !== 'register') {
+          showMaintenanceOverlay(d.banner || 'Sistem sedang dalam perbaikan.');
+        }
+      }
+    })
+    .catch(function() {});
+
   if (page === 'login' || page === 'register') {
     if (isLoggedIn()) {
       apiFetch('/api/web/auth/me', { skipAuthRedirect: true })
@@ -305,7 +342,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 600);
       } catch (err) {
         const msg = err.message || 'Email atau password salah.';
-        showAuthError(msg);
+        
+        if (err.status === 503) {
+          showMaintenanceOverlay(msg);
+        } else {
+          showAuthError(msg);
+        }
 
         if (window.turnstile) window.turnstile.reset();
         window.turnstileToken = '';
@@ -323,7 +365,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // =================== FORGOT PASSWORD ===================
   const forgotForm = document.getElementById('forgot-form');
   if (forgotForm) {
     const errBox = document.getElementById('auth-error-box');
@@ -379,7 +420,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // =================== RESET PASSWORD ===================
   const resetForm = document.getElementById('reset-form');
   if (resetForm) {
     const params = new URLSearchParams(window.location.search);
