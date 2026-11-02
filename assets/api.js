@@ -1,7 +1,3 @@
-/**
- * Sigit TempMail - Cloudflare Worker API Wrapper
- */
-
 const API_BASE_URL = 'https://sigit-tunnel.sigit-temp-api-v1.workers.dev';
 
 const STORAGE_KEYS = {
@@ -63,6 +59,28 @@ function showBannedModal(reason) {
   `;
 }
 
+function showKillSwitchScreen(message) {
+  if (document.getElementById('kill-switch-overlay')) return;
+  
+  const overlay = document.createElement('div');
+  overlay.id = 'kill-switch-overlay';
+  overlay.className = 'fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900 text-white text-center';
+  overlay.innerHTML = `
+    <div class="max-w-md animate-fade-in">
+      <div class="w-20 h-20 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center mx-auto mb-6">
+        <i data-lucide="server-off" class="w-10 h-10"></i>
+      </div>
+      <h1 class="text-3xl font-black mb-3">Server Nonaktif</h1>
+      <p class="text-sm text-slate-400 mb-8 leading-relaxed">${Utils.escapeHtml(message || 'Maaf, layanan sedang dimatikan sementara oleh Admin. Silakan kembali lagi nanti.')}</p>
+      <button onclick="window.location.reload()" class="px-6 py-3 bg-white text-slate-900 rounded-xl text-sm font-bold hover:bg-slate-200 transition">
+        Coba Lagi
+      </button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  if (window.lucide) window.lucide.createIcons();
+}
+
 async function apiFetch(endpoint, options = {}) {
   const url = endpoint.startsWith('http') ? endpoint : `${API_BASE_URL}${endpoint}`;
   const headers = {
@@ -95,6 +113,11 @@ async function apiFetch(endpoint, options = {}) {
       payload = { success: response.ok, error: text || response.statusText };
     }
 
+    if (response.status === 503) {
+      showKillSwitchScreen(payload?.error || 'Layanan sedang dinonaktifkan sementara.');
+      throw new Error(payload?.error || 'Server nonaktif');
+    }
+
     if (!response.ok || (payload && payload.success === false)) {
       const errMsg = (payload && (payload.error || payload.message)) || `Terjadi kesalahan (${response.status})`;
 
@@ -121,10 +144,6 @@ async function apiFetch(endpoint, options = {}) {
         }
       } else if (response.status === 429) {
         Utils.showToast(errMsg || 'Terlalu banyak permintaan (Rate Limit). Coba lagi beberapa saat.', 'warning');
-      } else if (response.status === 503 && payload && payload.maintenance) {
-        window.dispatchEvent(new CustomEvent('maintenance-active', {
-          detail: { message: errMsg }
-        }));
       }
 
       const error = new Error(errMsg);
@@ -135,7 +154,7 @@ async function apiFetch(endpoint, options = {}) {
 
     return payload;
   } catch (err) {
-    if (!err.status) {
+    if (!err.status && err.message !== 'Server nonaktif') {
       err.message = err.message || 'Gagal terhubung ke server API.';
     }
     throw err;
