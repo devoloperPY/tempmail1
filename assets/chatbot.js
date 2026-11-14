@@ -31,33 +31,15 @@
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
-
-    var urls = [];
-    out = out.replace(/(https?:\/\/[^\s<]+)/g, function(match) {
-      urls.push(match);
-      return `__URL_PLACEHOLDER_${urls.length - 1}__`;
-    });
-
-    out = out.replace(/```(\w+)?\n?([\s\S]*?)```/g, function(m, lang, code) {
-      return '<pre style="background:#1e293b;color:#e2e8f0;padding:10px;border-radius:6px;overflow-x:auto;font-family:monospace;font-size:12px;margin:8px 0;"><code>' + code.trim() + '</code></pre>';
-    });
-
     out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     out = out.replace(/`([^`]+)`/g, '<code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;font-family:JetBrains Mono,monospace;font-size:11px;">$1</code>');
-
-    out = out.replace(/__URL_PLACEHOLDER_(\d+)__/g, function(match, index) {
-      var url = urls[index];
-      var cleanUrl = url.replace(/[\)\]\>,]+$/, '');
-      var suffix = url.replace(cleanUrl, '');
-      return '<a href="' + cleanUrl + '" target="_blank" rel="noopener" style="color:#1a73e8;text-decoration:underline;word-break:break-all;">' + cleanUrl + '</a>' + suffix;
-    });
-
+    out = out.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:#1a73e8;text-decoration:underline;">$1</a>');
     return out;
   }
 
   function extractButtons(text) {
     if (!text) return { clean: '', buttons: [] };
-    var m = text.match(/\[BUTTONS:\s*([\s\S]+?)\]/i);
+    var m = text.match(/\[BUTTONS:\s*([^\]]+)\]/i);
     if (!m) return { clean: text, buttons: [] };
 
     var parts = m[1].split('|').map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 3);
@@ -69,6 +51,15 @@
   function extractUrlFromText(text) {
     var match = text.match(/\((https?:\/\/[^\)]+|\/[^\)]+)\)/);
     if (match && match[1]) return match[1];
+    
+    match = text.match(/(https?:\/\/[^\s]+|\/[^\s]+)/);
+    if (match && match[1]) return match[1];
+
+    var lower = text.toLowerCase();
+    if (lower.includes('telegram')) return 'https://t.me/sigitchan';
+    if (lower.includes('tiktok')) return 'https://tiktok.com/@sigitchan';
+    if (lower.includes('instagram')) return 'https://instagram.com/sigitchan';
+    
     return null;
   }
 
@@ -110,7 +101,7 @@
     var container = $('ai-messages');
     if (container) container.appendChild(wrap);
 
-    return { wrap: wrap, bubble: bubble, meta: meta, body: body };
+    return { wrap: wrap, bubble: bubble, meta: meta };
   }
 
   function showTypingIndicator() {
@@ -133,9 +124,7 @@
     }
     var bubble = el.querySelector('.ai-msg-bubble');
     if (bubble) {
-      var animStyle = 'display:inline-block; animation: bounceText 1.2s infinite;';
-      var spinStyle = 'width:12px; height:12px; border:2px solid #cbd5e1; border-top-color:#1a73e8; border-radius:50%; animation: spin 0.8s linear infinite; display:inline-block;';
-      bubble.innerHTML = '<div style="display:flex; align-items:center; gap:8px;"><div style="' + spinStyle + '"></div><span class="ai-status-text" style="font-size:12px; color:#64748b; font-weight:500; ' + animStyle + '">' + text + '</span></div>';
+      bubble.innerHTML = '<div style="display:flex;align-items:center;gap:8px;"><div style="width:12px;height:12px;border:2px solid #cbd5e1;border-top-color:#1a73e8;border-radius:50%;animation:spin 0.8s linear infinite;"></div><span class="ai-status-text" style="font-size:12px;color:#64748b;font-weight:500;">' + text + '</span></div>';
     }
   }
 
@@ -159,45 +148,22 @@
       btn.className = 'ai-inline-btn';
       
       var urlTarget = extractUrlFromText(text);
-      var displayText = text.replace(/\(.*?\)/g, '').trim(); 
+      var displayText = text;
       
-      if (!displayText) displayText = text;
+      var bracketMatch = text.match(/^(.+?)\s*\((https?:\/\/[^\)]+|\/[^\)]+)\)$/);
+      if (bracketMatch) displayText = bracketMatch[1];
 
       btn.textContent = displayText;
       if (disabled) btn.disabled = true;
 
       btn.addEventListener('click', function () {
         if (isBusy) return;
-        
-        var lower = text.toLowerCase();
-        
         if (urlTarget) {
-          if (urlTarget.startsWith('/') || urlTarget.startsWith('#')) {
-            var viewName = urlTarget.split('#')[1];
-            if (viewName && window.Dashboard && typeof window.Dashboard.switchView === 'function') {
-              window.Dashboard.switchView(viewName);
-            } else if (viewName) {
-              window.location.hash = '#' + viewName;
-              if (window.location.hash === '#' + viewName) {
-                 window.dispatchEvent(new HashChangeEvent('hashchange'));
-              }
-            } else {
-              window.location.href = urlTarget;
-            }
+          if (urlTarget.startsWith('/')) {
+            window.location.href = urlTarget;
           } else {
             window.open(urlTarget, '_blank', 'noopener');
           }
-        } else if (lower.includes('owner') || lower.includes('telegram') || lower.includes('kontak')) {
-          var name = 'User';
-          var email = '-';
-          var uid = '-';
-          if (window.Dashboard && window.Dashboard.user) {
-            name = window.Dashboard.user.display_name || name;
-            email = window.Dashboard.user.email || email;
-            uid = window.Dashboard.user.id || uid;
-          }
-          var msgText = 'Halo%20Owner%2C%20saya%20' + encodeURIComponent(name) + '%20(ID%3A%20' + uid + ')%2C%20email%20' + encodeURIComponent(email) + '.%20Saya%20butuh%20bantuan.';
-          window.open('https://t.me/sigitchan?text=' + msgText, '_blank', 'noopener');
         } else {
           sendMessage(text);
         }
@@ -235,7 +201,7 @@
 
     var allButtons = (buttons && buttons.length > 0) ? buttons : parsed.buttons;
     if (allButtons && allButtons.length > 0) {
-      renderInlineButtons(b.body, allButtons, false);
+      renderInlineButtons(b.body || b.meta.parentElement, allButtons, false);
     }
 
     scrollToBottom();
@@ -265,27 +231,9 @@
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'ai-quick-btn';
-      
-      btn.textContent = text.replace(/\(.*?\)/g, '').trim() || text;
-      
+      btn.textContent = text;
       btn.addEventListener('click', function () {
         if (isBusy) return;
-        
-        var urlTarget = extractUrlFromText(text);
-        if (urlTarget) {
-           if (urlTarget.startsWith('/') || urlTarget.startsWith('#')) {
-              var viewName = urlTarget.split('#')[1];
-              if (viewName && window.Dashboard && typeof window.Dashboard.switchView === 'function') {
-                window.Dashboard.switchView(viewName);
-              } else if (viewName) {
-                window.location.hash = '#' + viewName;
-              } else {
-                window.location.href = urlTarget;
-              }
-              return;
-           }
-        }
-        
         sendMessage(text);
       });
       list.appendChild(btn);
@@ -382,13 +330,10 @@
     var isTyping = false;
     var isBubbleCreated = false;
     var created = null;
-    var aborted = false;
 
     removeTypingIndicator();
 
     function typeWriter() {
-      if (aborted) return;
-
       if (!isBubbleCreated) {
         removeTypingIndicator();
         created = createBubble('bot');
@@ -456,8 +401,6 @@
       
     } catch (streamErr) {
       console.error('Stream read error:', streamErr);
-    } finally {
-      aborted = true;
     }
 
     var duration = nowMs() - streamData.startTime;
@@ -471,8 +414,7 @@
       created.meta.appendChild(dur);
 
       if (parsedEnd.buttons && parsedEnd.buttons.length > 0) {
-        renderInlineButtons(created.body, parsedEnd.buttons, false);
-        showQuickReplies(parsedEnd.buttons);
+        renderInlineButtons(created.bubble.parentElement, parsedEnd.buttons, false);
       }
     }
 
@@ -516,7 +458,6 @@
         removeTypingIndicator();
         appendBotMessage(streamResult.reply, streamResult.buttons, streamResult.durationMs, startTime);
         chatHistory.push({ role: 'assistant', content: streamResult.reply });
-        if (streamResult.buttons && streamResult.buttons.length > 0) showQuickReplies(streamResult.buttons);
       } else {
         var consumed = await consumeStream(streamResult);
         if (consumed.text) {
