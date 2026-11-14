@@ -67,7 +67,7 @@
   }
 
   function extractUrlFromText(text) {
-    var match = text.match(/\((https?:\/\/[^\)]+|\/(?:dashboard|#)[^\)]*)\)/);
+    var match = text.match(/\((https?:\/\/[^\)]+|\/[^\)]+)\)/);
     if (match && match[1]) return match[1];
     return null;
   }
@@ -177,7 +177,10 @@
             if (viewName && window.Dashboard && typeof window.Dashboard.switchView === 'function') {
               window.Dashboard.switchView(viewName);
             } else if (viewName) {
-              window.location.hash = viewName;
+              window.location.hash = '#' + viewName;
+              if (window.location.hash === '#' + viewName) {
+                 window.dispatchEvent(new HashChangeEvent('hashchange'));
+              }
             } else {
               window.location.href = urlTarget;
             }
@@ -262,9 +265,27 @@
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'ai-quick-btn';
-      btn.textContent = text;
+      
+      btn.textContent = text.replace(/\(.*?\)/g, '').trim() || text;
+      
       btn.addEventListener('click', function () {
         if (isBusy) return;
+        
+        var urlTarget = extractUrlFromText(text);
+        if (urlTarget) {
+           if (urlTarget.startsWith('/') || urlTarget.startsWith('#')) {
+              var viewName = urlTarget.split('#')[1];
+              if (viewName && window.Dashboard && typeof window.Dashboard.switchView === 'function') {
+                window.Dashboard.switchView(viewName);
+              } else if (viewName) {
+                window.location.hash = '#' + viewName;
+              } else {
+                window.location.href = urlTarget;
+              }
+              return;
+           }
+        }
+        
         sendMessage(text);
       });
       list.appendChild(btn);
