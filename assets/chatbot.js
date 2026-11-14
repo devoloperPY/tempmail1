@@ -54,11 +54,6 @@
     
     match = text.match(/(https?:\/\/[^\s]+|\/[^\s]+)/);
     if (match && match[1]) return match[1];
-
-    var lower = text.toLowerCase();
-    if (lower.includes('telegram')) return 'https://t.me/sigitchan';
-    if (lower.includes('tiktok')) return 'https://tiktok.com/@sigitchan';
-    if (lower.includes('instagram')) return 'https://instagram.com/sigitchan';
     
     return null;
   }
@@ -150,16 +145,18 @@
       btn.className = 'ai-inline-btn';
       
       var urlTarget = extractUrlFromText(text);
-      var displayText = text;
+      var displayText = text.replace(/\(.*?\)/g, '').trim(); 
       
-      var bracketMatch = text.match(/^(.+?)\s*\((https?:\/\/[^\)]+|\/[^\)]+)\)$/);
-      if (bracketMatch) displayText = bracketMatch[1];
+      if (!displayText) displayText = text;
 
       btn.textContent = displayText;
       if (disabled) btn.disabled = true;
 
       btn.addEventListener('click', function () {
         if (isBusy) return;
+        
+        var lower = text.toLowerCase();
+        
         if (urlTarget) {
           if (urlTarget.startsWith('/') || urlTarget.startsWith('#')) {
             if (window.Dashboard && window.Dashboard.switchView) {
@@ -171,6 +168,17 @@
           } else {
             window.open(urlTarget, '_blank', 'noopener');
           }
+        } else if (lower.includes('owner') || lower.includes('telegram') || lower.includes('kontak')) {
+          var name = 'User';
+          var email = '-';
+          var uid = '-';
+          if (window.Dashboard && window.Dashboard.user) {
+            name = window.Dashboard.user.display_name || name;
+            email = window.Dashboard.user.email || email;
+            uid = window.Dashboard.user.id || uid;
+          }
+          var msgText = 'Halo%20Owner%2C%20saya%20' + encodeURIComponent(name) + '%20(ID%3A%20' + uid + ')%2C%20email%20' + encodeURIComponent(email) + '.%20Saya%20butuh%20bantuan.';
+          window.open('https://t.me/sigitchan?text=' + msgText, '_blank', 'noopener');
         } else {
           sendMessage(text);
         }
