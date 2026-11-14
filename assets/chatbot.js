@@ -185,6 +185,7 @@
     if (bubble) {
       bubble.innerHTML = '<div style="display:flex;align-items:center;gap:8px;"><div style="width:12px;height:12px;border:2px solid #cbd5e1;border-top-color:#1a73e8;border-radius:50%;animation:spin 0.8s linear infinite;"></div><span class="ai-status-text" style="font-size:12px;color:#64748b;font-weight:500;">' + text + '</span></div>';
     }
+    scrollToBottom();
   }
 
   function removeTypingIndicator() {
