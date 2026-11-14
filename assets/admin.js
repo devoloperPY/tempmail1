@@ -775,7 +775,12 @@
     { key: 'maintenance_mode', label: 'Mode Maintenance', unit: '1/0', group: 'Sistem' },
     { key: 'web_enabled', label: 'Web Aktif', unit: '1/0', group: 'Sistem' },
     { key: 'require_login', label: 'Wajib Login', unit: '1/0', group: 'Sistem' },
-    { key: 'broadcast_banner', label: 'Broadcast Banner', unit: 'teks', group: 'Sistem' }
+    { key: 'broadcast_banner', label: 'Broadcast Banner', unit: 'teks', group: 'Sistem' },
+
+    { key: 'ai_enabled', label: 'AI Chatbot Aktif', unit: '1/0', group: 'AI Chatbot' },
+    { key: 'ai_api_key', label: 'API Key 9Router', unit: 'secret', group: 'AI Chatbot' },
+    { key: 'ai_api_url', label: 'API URL', unit: 'url', group: 'AI Chatbot' },
+    { key: 'ai_model', label: 'Model AI', unit: 'teks', group: 'AI Chatbot' }
   ];
 
   const CONFIG_GROUP_ICONS = {
@@ -784,12 +789,14 @@
     'Limit per Akun (Free)': 'user',
     'Limit per Akun (Premium)': 'crown',
     'Keamanan': 'shield',
-    'Sistem': 'settings'
+    'Sistem': 'settings',
+    'AI Chatbot': 'sparkles'
   };
 
   function renderConfigField(c, map) {
     const val = map[c.key] !== undefined ? map[c.key] : '';
     const isBool = c.unit === '1/0';
+    const isSecret = c.unit === 'secret';
     const isOn = val === '1' || val === 'true';
 
     if (isBool) {
@@ -804,6 +811,28 @@
             <span class="config-toggle-slider"></span>
             <span class="config-toggle-label">${isOn ? 'Aktif' : 'Nonaktif'}</span>
           </label>
+        </div>`;
+    }
+
+    if (isSecret) {
+      return `
+        <div class="config-field" style="grid-column: 1 / -1;">
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <label class="admin-field-label mb-0">${esc(c.label)}</label>
+            <span class="config-unit">${esc(c.unit)}</span>
+          </div>
+          <div style="position: relative;">
+            <input type="password" data-config-key="${esc(c.key)}" data-config-type="secret" value="${esc(val)}" class="admin-field-input" style="padding-right: 80px; font-family: 'JetBrains Mono', monospace; font-size: 12px;" autocomplete="off" spellcheck="false" />
+            <div style="position: absolute; top: 50%; right: 6px; transform: translateY(-50%); display: flex; gap: 4px;">
+              <button type="button" onclick="toggleSecretVisibility(this)" style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; border: 1px solid #e2e8f0; color: #475569; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Tampilkan/Sembunyikan">
+                <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
+              </button>
+              <button type="button" onclick="clearSecretField(this)" style="width: 28px; height: 28px; border-radius: 6px; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Kosongkan">
+                <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+              </button>
+            </div>
+          </div>
+          <p class="text-[10px] text-slate-400 mt-1">Kosongkan dan simpan untuk menghapus key. Nilai key akan disamarkan saat ditampilkan.</p>
         </div>`;
     }
 
@@ -845,6 +874,31 @@
     });
 
     if (window.lucide) window.lucide.createIcons();
+  }
+
+  function toggleSecretVisibility(btn) {
+    const wrap = btn.closest('div').parentElement;
+    const input = wrap.querySelector('input[data-config-type="secret"]');
+    if (!input) return;
+    const icon = btn.querySelector('i');
+    if (input.type === 'password') {
+      input.type = 'text';
+      if (icon) icon.setAttribute('data-lucide', 'eye-off');
+    } else {
+      input.type = 'password';
+      if (icon) icon.setAttribute('data-lucide', 'eye');
+    }
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  function clearSecretField(btn) {
+    const wrap = btn.closest('div').parentElement;
+    const input = wrap.querySelector('input[data-config-type="secret"]');
+    if (!input) return;
+    if (!confirm('Kosongkan field ini? Setelah disimpan, key akan terhapus.')) return;
+    input.value = '';
+    input.focus();
+    adminToast('Field dikosongkan. Klik Simpan untuk apply.', 'warning');
   }
 
   function switchConfigTab(name) {
@@ -901,6 +955,10 @@
       }
 
       if (state.configs[key] !== val) {
+        if (type === 'secret' && val.indexOf('***MASKED***') !== -1) {
+          return;
+        }
+
         const numKeys = [
           'signup_bonus_points', 'subdomain_pointing_cost', 'subdomain_termux_cost',
           'free_max_active_subdomain', 'premium_max_active_subdomain',
@@ -1130,6 +1188,8 @@
   window.loadConfig = loadConfig;
   window.saveConfig = saveConfig;
   window.switchConfigTab = switchConfigTab;
+  window.toggleSecretVisibility = toggleSecretVisibility;
+  window.clearSecretField = clearSecretField;
   window.loadVisitors = loadVisitors;
   window.openBlockIpModal = openBlockIpModal;
   window.submitBlockIp = submitBlockIp;
