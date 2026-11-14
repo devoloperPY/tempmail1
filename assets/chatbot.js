@@ -33,13 +33,13 @@
       .replace(/>/g, '&gt;');
     out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     out = out.replace(/`([^`]+)`/g, '<code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;font-family:JetBrains Mono,monospace;font-size:11px;">$1</code>');
-    out = out.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:#1a73e8;text-decoration:underline;">$1</a>');
+    out = out.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:#1a73e8;text-decoration:underline;word-break:break-all;">$1</a>');
     return out;
   }
 
   function extractButtons(text) {
     if (!text) return { clean: '', buttons: [] };
-    var m = text.match(/\[BUTTONS:\s*([^\]]+)\]/i);
+    var m = text.match(/\[BUTTONS:\s*([\s\S]+?)\]/i);
     if (!m) return { clean: text, buttons: [] };
 
     var parts = m[1].split('|').map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 3);
@@ -49,18 +49,15 @@
   }
 
   function extractUrlFromText(text) {
-    var match = text.match(/\((https?:\/\/[^\)]+|\/[^\)]+)\)/);
-    if (match && match[1]) return match[1];
-    
-    match = text.match(/(https?:\/\/[^\s]+|\/[^\s]+)/);
-    if (match && match[1]) return match[1];
-
-    var lower = text.toLowerCase();
-    if (lower.includes('telegram')) return 'https://t.me/sigitchan';
-    if (lower.includes('tiktok')) return 'https://tiktok.com/@sigitchan';
-    if (lower.includes('instagram')) return 'https://instagram.com/sigitchan';
-    
+    var urlMatch = text.match(/(https?:\/\/[^\s\)]+|\/[^\s\)]+)/);
+    if (urlMatch) return urlMatch[1];
     return null;
+  }
+
+  function getButtonDisplayText(text) {
+    var match = text.match(/^(.+?)\s*[\(\[]/);
+    if (match) return match[1].trim();
+    return text;
   }
 
   function avatarBotSvg() {
@@ -150,10 +147,7 @@
       btn.className = 'ai-inline-btn';
       
       var urlTarget = extractUrlFromText(text);
-      var displayText = text;
-      
-      var bracketMatch = text.match(/^(.+?)\s*\((https?:\/\/[^\)]+|\/[^\)]+)\)$/);
-      if (bracketMatch) displayText = bracketMatch[1];
+      var displayText = getButtonDisplayText(text);
 
       btn.textContent = displayText;
       if (disabled) btn.disabled = true;
