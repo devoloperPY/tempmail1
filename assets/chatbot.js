@@ -37,34 +37,32 @@
     return out;
   }
 
-  // FUNGSI BARU: Menyedot URL dari teks biasa dan mengubahnya jadi tombol
   function autoExtractUrls(text) {
     var buttons = [];
-    // Cari URL http/https ATAU link telegram (yang mungkin tanpa https://)
-    var urlRegex = /(https?:\/\/[^\s]+|t\.me\/[^\s]+)/gi;
+    var urlRegex = /(https?:\/\/[^\s]+)/gi;
     var match;
     
-    // Looping semua URL yang ada di teks
     while ((match = urlRegex.exec(text)) !== null) {
       var rawUrl = match[0];
-      var finalUrl = rawUrl;
-      if (!finalUrl.startsWith('http')) finalUrl = 'https://' + finalUrl;
-      
-      var label = 'Buka Link';
-      if (finalUrl.includes('t.me')) label = 'Hubungi Owner';
-      else if (finalUrl.includes('dashboard.html')) label = 'Buka Halaman';
-
-      buttons.push(label + ' (' + finalUrl + ')');
-      // Hapus URL dari teks aslinya
+      var label = rawUrl.includes('t.me') ? 'Hubungi Owner' : 'Buka Link';
+      buttons.push(label + ' (' + rawUrl + ')');
       text = text.replace(rawUrl, '');
     }
+
+    var textParamRegex = /(?:text=)[^\s]+/gi;
+    while ((match = textParamRegex.exec(text)) !== null) {
+      var rawSampah = match[0];
+      var urlTelegram = 'https://t.me/sigitchan?' + rawSampah;
+      buttons.push('Hubungi Owner (' + urlTelegram + ')');
+      text = text.replace(rawSampah, '');
+    }
+
     return { clean: text.trim(), buttons: buttons };
   }
 
   function extractButtons(text) {
     if (!text) return { clean: '', buttons: [] };
     
-    // 1. Cek apakah ada marker [BUTTONS: ...] dari AI
     var m = text.match(/\[BUTTONS:\s*([^\]]+)\]/i);
     var clean = text;
     var buttons = [];
@@ -83,16 +81,11 @@
       clean = text.replace(m[0], '').trim();
     }
 
-    // 2. Cek apakah ada URL mentah yang "tumpah" di teks (seperti kasus di gambar)
     var auto = autoExtractUrls(clean);
     clean = auto.clean;
-    
-    // Gabungkan tombol dari marker AI dengan tombol dari URL yang tumpah
     buttons = buttons.concat(auto.buttons);
 
-    // Buang duplikat dan batasi max 3 tombol
     buttons = [...new Set(buttons)].slice(0, 3);
-
     return { clean: clean, buttons: buttons };
   }
 
@@ -107,8 +100,6 @@
 
     var lower = text.toLowerCase();
     if (lower.includes('telegram')) return 'https://t.me/sigitchan';
-    if (lower.includes('tiktok')) return 'https://tiktok.com/@sigitchan';
-    if (lower.includes('instagram')) return 'https://instagram.com/sigitchan';
     return null;
   }
 
@@ -236,7 +227,6 @@
     var parsed = extractButtons(text);
     var b = createBubble('bot');
     
-    // Tampilkan teks yang sudah bersih (tanpa URL panjang)
     b.bubble.innerHTML = formatMarkdown(parsed.clean);
 
     var metaText = formatTimestamp(now);
@@ -321,9 +311,7 @@
     });
 
     var token = (typeof getToken === 'function') ? getToken() : null;
-    if (!token) {
-      throw new Error('Sesi login tidak valid. Silakan login ulang.');
-    }
+    if (!token) throw new Error('Sesi login tidak valid. Silakan login ulang.');
 
     var url = (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '') + '/api/web/ai/chat';
 
@@ -333,10 +321,7 @@
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + token
       },
-      body: JSON.stringify({
-        message: message,
-        history: historyForApi
-      })
+      body: JSON.stringify({ message: message, history: historyForApi })
     });
 
     if (!res.ok) {
@@ -361,9 +346,7 @@
       };
     }
 
-    if (!res.body) {
-      throw new Error('Respons AI kosong.');
-    }
+    if (!res.body) throw new Error('Respons AI kosong.');
 
     return {
       type: 'stream',
@@ -397,12 +380,9 @@
         
         fullText += chunk;
         
-        // Selama ngetik, kita panggil extractButtons agar URL langsung hilang dari layar
-        // dan tombol langsung muncul (jika formatnya sudah valid di tengah jalan)
         var parsed = extractButtons(fullText);
         created.bubble.innerHTML = formatMarkdown(parsed.clean);
         
-        // Render tombol secara live jika sudah terdeteksi
         if (parsed.buttons && parsed.buttons.length > 0) {
           renderInlineButtons(created.body, parsed.buttons, false);
         }
@@ -429,9 +409,7 @@
           var chunk = parseSseChunk(line);
           if (chunk) {
             if (chunk.type === 'status') {
-              if (!isBubbleCreated) {
-                updateTypingIndicator(chunk.text);
-              }
+              if (!isBubbleCreated) updateTypingIndicator(chunk.text);
             } else if (chunk.type === 'error') {
               removeTypingIndicator();
               appendErrorMessage(chunk.error);
@@ -472,7 +450,6 @@
       dur.textContent = '⏱ ' + formatDuration(duration);
       created.meta.appendChild(dur);
 
-      // Final render untuk memastikan tombol terpasang sempurna
       if (parsedEnd.buttons && parsedEnd.buttons.length > 0) {
         renderInlineButtons(created.body, parsedEnd.buttons, false);
       }
@@ -496,7 +473,6 @@
     hideQuickReplies();
     isBusy = true;
     setInputDisabled(true);
-
     var startTime = nowMs();
 
     appendUserMessage(clean);
@@ -527,11 +503,8 @@
     } catch (err) {
       removeTypingIndicator();
       var msg = err.message || 'Gagal menghubungi Sigit AI.';
-      if (err.status === 429) {
-        msg = 'Terlalu banyak pesan. Tunggu 1 menit lagi ya.';
-      } else if (err.status === 503) {
-        msg = 'Sigit AI sedang tidak tersedia. Coba lagi nanti atau hubungi @sigitchan.';
-      }
+      if (err.status === 429) msg = 'Terlalu banyak pesan. Tunggu 1 menit lagi ya.';
+      else if (err.status === 503) msg = 'Sigit AI sedang tidak tersedia. Coba lagi nanti atau hubungi @sigitchan.';
       appendErrorMessage(msg);
     } finally {
       isBusy = false;
@@ -547,11 +520,8 @@
     var btn = $('ai-send-btn');
     if (input) input.disabled = disabled;
     if (btn) btn.disabled = disabled;
-
     var quickBtns = document.querySelectorAll('.ai-quick-btn, .ai-inline-btn');
-    for (var i = 0; i < quickBtns.length; i++) {
-      quickBtns[i].disabled = disabled;
-    }
+    for (var i = 0; i < quickBtns.length; i++) quickBtns[i].disabled = disabled;
   }
 
   function updateCharCount() {
@@ -580,15 +550,12 @@
   function showWelcome() {
     if (hasWelcomed) return;
     hasWelcomed = true;
-
     var displayName = 'Teman';
     if (window.Dashboard && Dashboard.user && Dashboard.user.display_name) {
       displayName = Dashboard.user.display_name.split(' ')[0];
     }
-
     var welcome = 'Halo **' + displayName + '**! Aku **Sigit AI**, asisten platform Sigit TempMail. Aku bisa bantu soal **TempMail**, **Subdomain**, **Poin**, dan **Akun**. Mau mulai dari mana?';
     var buttons = ['Cara bikin mailbox', 'Cara bikin subdomain', 'Cara topup poin'];
-
     appendBotMessage(welcome, buttons, 0);
     showQuickReplies(buttons);
   }
@@ -661,7 +628,6 @@
   function init() {
     bindEvents();
     startPlaceholderAnimation();
-
     if (window.lucide) window.lucide.createIcons();
   }
 
