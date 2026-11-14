@@ -41,59 +41,76 @@
     
     var clean = text;
     var buttons = [];
-    var searchKeyword = '[BUTTONS:';
-    var startIndex = clean.toUpperCase().indexOf(searchKeyword);
+    
+    // 1. Cari blok [BUTTONS: ... ]
+    var keyword = '[BUTTONS:';
+    var startIndex = clean.toUpperCase().indexOf(keyword);
 
     while (startIndex !== -1) {
-      var openBracketIndex = clean.indexOf('[', startIndex);
-      var closeBracketIndex = clean.indexOf(']', openBracketIndex);
+      var openIdx = clean.indexOf('[', startIndex);
+      var closeIdx = clean.indexOf(']', openIdx + keyword.length);
 
-      if (openBracketIndex !== -1 && closeBracketIndex !== -1) {
-        var rawBlock = clean.substring(openBracketIndex + searchKeyword.length, closeBracketIndex).trim();
-        
-        var parts = rawBlock.split('|');
-        parts.forEach(function(part) {
-          part = part.trim();
-          if (!part) return;
+      // Jika belum ada kurung tutup (masih streaming), biarkan dulu
+      if (openIdx === -1 || closeIdx === -1) break;
 
-          var openParen = part.indexOf('(');
-          var closeParen = part.lastIndexOf(')');
+      var content = clean.substring(openIdx + keyword.length, closeIdx).trim();
+      clean = clean.substring(0, openIdx) + clean.substring(closeIdx + 1);
+      
+      var parts = content.split('|');
+      parts.forEach(function(part) {
+        part = part.trim();
+        if (!part) return;
 
-          if (openParen !== -1 && closeParen !== -1 && closeParen > openParen) {
-            var label = part.substring(0, openParen).trim();
-            var url = part.substring(openParen + 1, closeParen).trim();
-            
-            label = label.replace(/^\*+|\*+$/g, '').trim();
+        var openP = part.indexOf('(');
+        var closeP = part.lastIndexOf(')');
 
-            if (url.startsWith('http') || url.startsWith('/')) {
-              buttons.push(label + ' (' + url + ')');
-            }
-          } else {
-            buttons.push(part);
+        if (openP !== -1 && closeP !== -1) {
+          var lbl = part.substring(0, openP).replace(/^\*+|\*+$/g, '').trim();
+          var url = part.substring(openP + 1, closeP).trim();
+          if (url.startsWith('http') || url.startsWith('/')) {
+            buttons.push(lbl + ' (' + url + ')');
+            part = ''; // Tandai sudah diproses
           }
-        });
+        }
+        
+        if (part !== '') {
+          buttons.push(part); 
+        }
+      });
 
-        clean = clean.substring(0, openBracketIndex) + clean.substring(closeBracketIndex + 1);
-      } else {
-        break;
-      }
-
-      startIndex = clean.toUpperCase().indexOf(searchKeyword);
+      startIndex = clean.toUpperCase().indexOf(keyword);
     }
 
-    var urlRegex = /(https?:\/\/[^\s\)]+)/gi;
-    var match;
-    while ((match = urlRegex.exec(clean)) !== null) {
-      var rawUrl = match[0];
+    // 2. PEMBERSIH URL MENTAH (Jika AI bandel taruh URL di luar kurung)
+    // Cari "http" dan potong sampai spasi terdekat
+    var urlStartIdx = clean.indexOf('http');
+    while (urlStartIdx !== -1) {
+      var urlEndIdx = clean.indexOf(' ', urlStartIdx);
+      if (urlEndIdx === -1) urlEndIdx = clean.length;
       
-      if (clean.indexOf(rawUrl) === -1) continue;
-
-      var urlLabel = rawUrl.includes('t.me') ? 'Hubungi Owner' : 'Buka Link';
-      buttons.push(urlLabel + ' (' + rawUrl + ')');
+      var rawUrl = clean.substring(urlStartIdx, urlEndIdx).replace(/[\)\]\}\,\.]+$/, '');
       
+      var label = rawUrl.includes('t.me') ? 'Hubungi Owner' : 'Buka Link';
+      buttons.push(label + ' (' + rawUrl + ')');
+      
+      // Hapus URL dari layar
       clean = clean.replace(rawUrl, '');
+      urlStartIdx = clean.indexOf('http');
     }
 
+    // 3. PEMBERSIH SISA URL TERPOTONG (Misal: AI nulis 'text=Halo%20Owner...')
+    var textEqIdx = clean.indexOf('text=');
+    while (textEqIdx !== -1) {
+      var endIdx = clean.indexOf(' ', textEqIdx);
+      if (endIdx === -1) endIdx = clean.length;
+
+      var sisaUrl = clean.substring(textEqIdx, endIdx);
+      buttons.push('Hubungi Owner (https://t.me/sigitchan?' + sisaUrl + ')');
+      clean = clean.replace(sisaUrl, '');
+      textEqIdx = clean.indexOf('text=');
+    }
+
+    // Bersihkan sisa-sisa kurung atau teks aneh
     buttons = [...new Set(buttons)].slice(0, 3);
     clean = clean.replace(/\n{3,}/g, '\n\n').trim();
 
@@ -102,15 +119,13 @@
 
   function extractUrlFromText(text) {
     if (!text) return null;
-    
-    var m = text.match(/\(([^()]*?(?:https?:\/\/|\/)[^()]*)\)/);
-    if (m && m[1]) return m[1].trim();
-
-    var m2 = text.match(/(https?:\/\/[^\s)]+)/);
-    if (m2) return m2[1];
-
-    var lower = text.toLowerCase();
-    if (lower.includes('telegram')) return 'https://t.me/sigitchan';
+    var openP = text.indexOf('(');
+    var closeP = text.lastIndexOf(')');
+    if (openP !== -1 && closeP !== -1) {
+      return text.substring(openP + 1, closeP).trim();
+    }
+    var match = text.match(/(https?:\/\/[^\s)]+)/);
+    if (match) return match[1];
     return null;
   }
 
@@ -201,8 +216,8 @@
       var urlTarget = extractUrlFromText(text);
       var displayText = text;
       
-      var bracketMatch = text.match(/^(.+?)\s*\(([^()]*?(?:https?:\/\/|\/)[^()]*)\)\s*$/);
-      if (bracketMatch) displayText = bracketMatch[1].trim();
+      var openP = text.indexOf('(');
+      if (openP !== -1) displayText = text.substring(0, openP).trim();
 
       btn.textContent = displayText;
       if (disabled) btn.disabled = true;
