@@ -49,10 +49,10 @@
   }
 
   function extractUrlFromText(text) {
-    var match = text.match(/\((https?:\/\/[^\)]+)\)/);
+    var match = text.match(/\((https?:\/\/[^\)]+|\/[^\)]+)\)/);
     if (match && match[1]) return match[1];
     
-    match = text.match(/(https?:\/\/[^\s]+)/);
+    match = text.match(/(https?:\/\/[^\s]+|\/[^\s]+)/);
     if (match && match[1]) return match[1];
 
     var lower = text.toLowerCase();
@@ -150,7 +150,7 @@
       var urlTarget = extractUrlFromText(text);
       var displayText = text;
       
-      var bracketMatch = text.match(/^(.+?)\s*\(https?:\/\/[^\)]+\)$/);
+      var bracketMatch = text.match(/^(.+?)\s*\((https?:\/\/[^\)]+|\/[^\)]+)\)$/);
       if (bracketMatch) displayText = bracketMatch[1];
 
       btn.textContent = displayText;
@@ -159,7 +159,11 @@
       btn.addEventListener('click', function () {
         if (isBusy) return;
         if (urlTarget) {
-          window.open(urlTarget, '_blank', 'noopener');
+          if (urlTarget.startsWith('/')) {
+            window.location.href = urlTarget;
+          } else {
+            window.open(urlTarget, '_blank', 'noopener');
+          }
         } else {
           sendMessage(text);
         }
@@ -324,12 +328,18 @@
     var fullText = '';
     var typingQueue = "";
     var isTyping = false;
-    var hasTextStarted = false;
+    var isBubbleCreated = false;
+    var created = null;
 
     removeTypingIndicator();
-    var created = createBubble('bot');
 
     function typeWriter() {
+      if (!isBubbleCreated) {
+        removeTypingIndicator();
+        created = createBubble('bot');
+        isBubbleCreated = true;
+      }
+
       if (typingQueue.length > 0) {
         var chunk = typingQueue.substring(0, 2);
         typingQueue = typingQueue.substring(2);
@@ -360,16 +370,13 @@
           var chunk = parseSseChunk(line);
           if (chunk) {
             if (chunk.type === 'status') {
-              if (!hasTextStarted) {
+              if (!isBubbleCreated) {
                 updateTypingIndicator(chunk.text);
               }
             } else if (chunk.type === 'error') {
+              removeTypingIndicator();
               appendErrorMessage(chunk.error);
             } else if (chunk.type === 'content') {
-              if (!hasTextStarted) {
-                hasTextStarted = true;
-                removeTypingIndicator();
-              }
               typingQueue += chunk.text;
               if (!isTyping) {
                 isTyping = true;
@@ -383,7 +390,6 @@
       if (buffer.trim()) {
         var finalChunk = parseSseChunk(buffer.trim());
         if (finalChunk && finalChunk.type === 'content') {
-           if (!hasTextStarted) { hasTextStarted = true; removeTypingIndicator(); }
            typingQueue += finalChunk.text;
            if (!isTyping) { isTyping = true; typeWriter(); }
         }
@@ -400,14 +406,16 @@
     var duration = nowMs() - streamData.startTime;
     var parsedEnd = extractButtons(fullText);
 
-    created.meta.innerHTML = formatTimestamp(Date.now());
-    var dur = document.createElement('span');
-    dur.className = 'meta-duration';
-    dur.textContent = '⏱ ' + formatDuration(duration);
-    created.meta.appendChild(dur);
+    if (created) {
+      created.meta.innerHTML = formatTimestamp(Date.now());
+      var dur = document.createElement('span');
+      dur.className = 'meta-duration';
+      dur.textContent = '⏱ ' + formatDuration(duration);
+      created.meta.appendChild(dur);
 
-    if (parsedEnd.buttons && parsedEnd.buttons.length > 0) {
-      renderInlineButtons(created.bubble.parentElement, parsedEnd.buttons, false);
+      if (parsedEnd.buttons && parsedEnd.buttons.length > 0) {
+        renderInlineButtons(created.bubble.parentElement, parsedEnd.buttons, false);
+      }
     }
 
     return {
