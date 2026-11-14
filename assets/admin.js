@@ -1,1279 +1,591 @@
 (function () {
   'use strict';
 
-  const state = {
-    user: null,
-    usersPage: 0,
-    usersLimit: 20,
-    usersTotal: 0,
-    usersFilter: '',
-    usersSearch: '',
-    currentUserId: null,
-    currentUserEmail: null,
-    currentUserPoints: 0,
-    visitors: [],
-    configs: {},
-    configsGroups: null,
-    activeConfigGroup: null,
-    initialized: false,
-    bootstrapped: false
-  };
+  var MAX_INPUT = 200;
+  var MAX_HISTORY_SEND = 10;
+  var PLACEHOLDERS = ['Butuh bantuan?', 'Butuh bantuan..', 'Butuh bantuan...', 'Butuh bantuan..'];
+  var placeholderIdx = 0;
+  var placeholderTimer = null;
 
-  const ROLE_ALLOWED = ['admin', 'owner'];
-  const SECRET_KEYS = ['ai_provider1_api_key', 'ai_provider2_api_key'];
-
-  const AI_TEMPLATES = {
-    ai_provider1_api_url: 'https://9router.sigitc.my.id/v1/chat/completions',
-    ai_provider1_model: 'nvidia/nvidia/nemotron-3-ultra-550b-a55b',
-    ai_provider2_api_url: 'https://integrate.api.nvidia.com/v1/chat/completions',
-    ai_provider2_model: 'nvidia/nemotron-3-ultra-550b-a55b',
-    ai_max_input_length: '200',
-    ai_rate_limit_per_minute: '10'
-  };
+  var chatHistory = [];
+  var isBusy = false;
+  var isOpen = false;
+  var hasWelcomed = false;
 
   function $(id) { return document.getElementById(id); }
-  function $all(sel) { return document.querySelectorAll(sel); }
+  function nowMs() { return (window.performance && performance.now) ? performance.now() : Date.now(); }
 
-  function esc(s) {
-    if (s === null || s === undefined) return '';
-    return String(s)
+  function formatTimestamp(ms) {
+    var d = new Date(ms);
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
+  function formatDuration(ms) {
+    if (ms < 1000) return Math.round(ms) + 'ms';
+    return (ms / 1000).toFixed(2) + 's';
+  }
+
+  function formatMarkdown(text) {
+    var out = String(text)
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+      .replace(/>/g, '&gt;');
+    out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    out = out.replace(/`([^`]+)`/g, '<code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;font-family:JetBrains Mono,monospace;font-size:11px;">$1</code>');
+    
+    out = out.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:#1a73e8;text-decoration:underline;">$1</a>');
+    
+    return out;
   }
 
-  function fmtNum(n) {
-    return Number(n || 0).toLocaleString('id-ID');
+  function extractButtons(text) {
+    if (!text) return { clean: '', buttons: [] };
+    var m = text.match(/\[BUTTONS:\s*([^\]]+)\]/i);
+    if (!m) return { clean: text, buttons: [] };
+
+    var parts = m[1].split('|').map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 3);
+    var clean = text.replace(m[0], '').trim();
+
+    return { clean: clean, buttons: parts };
   }
 
-  function fmtDate(ts) {
-    if (!ts) return '-';
-    try {
-      return new Date(ts * 1000).toLocaleString('id-ID', {
-        day: '2-digit', month: 'short', year: 'numeric',
-        hour: '2-digit', minute: '2-digit'
+  function extractUrlFromText(text) {
+    var match = text.match(/\((https?:\/\/[^\)]+)\)/);
+    if (match && match[1]) return match[1];
+    
+    match = text.match(/(https?:\/\/[^\s]+)/);
+    if (match && match[1]) return match[1];
+
+    var lower = text.toLowerCase();
+    if (lower.includes('telegram')) return 'https://t.me/sigitchan';
+    if (lower.includes('tiktok')) return 'https://tiktok.com/@sigitchan';
+    if (lower.includes('instagram')) return 'https://instagram.com/sigitchan';
+    
+    return null;
+  }
+
+  function avatarBotSvg() {
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>';
+  }
+
+  function avatarUserSvg() {
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+  }
+
+  function scrollToBottom() {
+    var el = $('ai-messages');
+    if (el) el.scrollTop = el.scrollHeight;
+  }
+
+  function createBubble(role) {
+    var wrap = document.createElement('div');
+    wrap.className = 'ai-msg ' + role;
+
+    var avatar = document.createElement('div');
+    avatar.className = 'ai-msg-avatar';
+    avatar.innerHTML = role === 'bot' ? avatarBotSvg() : avatarUserSvg();
+
+    var body = document.createElement('div');
+    body.className = 'ai-msg-body';
+
+    var bubble = document.createElement('div');
+    bubble.className = 'ai-msg-bubble';
+
+    var meta = document.createElement('div');
+    meta.className = 'ai-msg-meta';
+
+    body.appendChild(bubble);
+    body.appendChild(meta);
+    wrap.appendChild(avatar);
+    wrap.appendChild(body);
+
+    var container = $('ai-messages');
+    if (container) container.appendChild(wrap);
+
+    return { wrap: wrap, bubble: bubble, meta: meta };
+  }
+
+  function showTypingIndicator() {
+    var wrap = document.createElement('div');
+    wrap.className = 'ai-msg bot';
+    wrap.id = 'ai-typing-bubble';
+    wrap.innerHTML =
+      '<div class="ai-msg-avatar">' + avatarBotSvg() + '</div>' +
+      '<div class="ai-msg-body"><div class="ai-msg-bubble"><div class="ai-typing"><span></span><span></span><span></span></div></div></div>';
+    var container = $('ai-messages');
+    if (container) container.appendChild(wrap);
+    scrollToBottom();
+  }
+
+  function removeTypingIndicator() {
+    var el = $('ai-typing-bubble');
+    if (el) el.remove();
+  }
+
+  function renderInlineButtons(bodyEl, buttons, disabled) {
+    if (!buttons || buttons.length === 0) return;
+
+    var old = bodyEl.querySelector('.ai-inline-buttons');
+    if (old) old.remove();
+
+    var wrap = document.createElement('div');
+    wrap.className = 'ai-inline-buttons';
+
+    buttons.forEach(function (text) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ai-inline-btn';
+      
+      var urlTarget = extractUrlFromText(text);
+      var displayText = text;
+      
+      var bracketMatch = text.match(/^(.+?)\s*\(https?:\/\/[^\)]+\)$/);
+      if (bracketMatch) displayText = bracketMatch[1];
+
+      btn.textContent = displayText;
+      if (disabled) btn.disabled = true;
+
+      btn.addEventListener('click', function () {
+        if (isBusy) return;
+        if (urlTarget) {
+          window.open(urlTarget, '_blank', 'noopener');
+        } else {
+          sendMessage(text);
+        }
       });
-    } catch (e) { return '-'; }
-  }
-
-  function fmtRel(ts) {
-    if (!ts) return '-';
-    const diff = Math.floor(Date.now() / 1000) - ts;
-    if (diff < 60) return 'Baru saja';
-    if (diff < 3600) return Math.floor(diff / 60) + ' mnt lalu';
-    if (diff < 86400) return Math.floor(diff / 3600) + ' jam lalu';
-    if (diff < 604800) return Math.floor(diff / 86400) + ' hari lalu';
-    return fmtDate(ts);
-  }
-
-  function adminToast(msg, type) {
-    type = type || 'success';
-    let wrap = $('admin-toast');
-    if (!wrap) {
-      wrap = document.createElement('div');
-      wrap.id = 'admin-toast';
-      wrap.className = 'fixed top-4 right-4 z-[9999] flex flex-col gap-2 w-full max-w-sm pointer-events-none';
-      document.body.appendChild(wrap);
-    }
-    const el = document.createElement('div');
-    const colors = {
-      success: 'border-emerald-500 bg-emerald-50 text-emerald-800',
-      error: 'border-red-500 bg-red-50 text-red-800',
-      warning: 'border-amber-500 bg-amber-50 text-amber-800'
-    };
-    el.className = `pointer-events-auto border-l-4 p-4 rounded-xl shadow-lg text-xs font-semibold ${colors[type] || colors.success}`;
-    const iconName = type === 'error' ? 'x-circle' : type === 'warning' ? 'alert-triangle' : 'check-circle';
-    el.innerHTML = `<div class="flex items-center gap-2"><i data-lucide="${iconName}" class="w-4 h-4"></i><span>${esc(msg)}</span></div>`;
-    wrap.appendChild(el);
-    if (window.lucide) window.lucide.createIcons();
-    setTimeout(() => {
-      el.style.opacity = '0';
-      el.style.transform = 'translateX(20px)';
-      el.style.transition = 'all 0.2s';
-      setTimeout(() => el.remove(), 200);
-    }, 4000);
-  }
-
-  function adminLoading(show) {
-    let loader = $('admin-loader');
-    if (!loader && show) {
-      loader = document.createElement('div');
-      loader.id = 'admin-loader';
-      loader.style.cssText = 'position:fixed;inset:0;z-index:9998;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,0.4);backdrop-filter:blur(4px)';
-      loader.innerHTML = '<div style="background:#fff;padding:20px 28px;border-radius:12px;display:flex;align-items:center;gap:12px;box-shadow:0 12px 40px -8px rgba(15,23,42,0.3)"><div style="width:20px;height:20px;border:2.5px solid rgba(37,99,235,0.25);border-top-color:#2563eb;border-radius:50%;animation:spin 0.7s linear infinite"></div><span style="font-size:13px;font-weight:600;color:#0f172a">Memproses...</span></div><style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
-      document.body.appendChild(loader);
-    } else if (loader && !show) {
-      loader.remove();
-    }
-  }
-
-  function toggleAdminSidebar() {
-    const panel = $('admin-sidebar');
-    const overlay = $('admin-sidebar-overlay');
-    if (!panel || !overlay) return;
-    if (panel.classList.contains('is-open')) {
-      panel.classList.remove('is-open');
-      overlay.classList.add('hidden');
-    } else {
-      panel.classList.add('is-open');
-      overlay.classList.remove('hidden');
-    }
-  }
-
-  function adminSwitchView(name, ev) {
-    if (ev) ev.preventDefault();
-
-    $all('.admin-view').forEach(v => v.classList.remove('active'));
-    const target = $('admin-view-' + name);
-    if (target) target.classList.add('active');
-
-    $all('.admin-nav-item').forEach(i => i.classList.remove('active'));
-    $all('.admin-nav-item').forEach(i => {
-      if (i.getAttribute('data-view') === name) i.classList.add('active');
+      wrap.appendChild(btn);
     });
 
-    const titles = {
-      overview: ['Overview', 'Ringkasan platform'],
-      users: ['Kelola Pengguna', 'Cari, edit, dan kelola akun'],
-      points: ['Poin Ledger', 'Semua transaksi poin'],
-      domains: ['Domain Manager', 'Kelola domain aktif'],
-      config: ['Konfigurasi', 'Harga, limit, dan sistem'],
-      visitors: ['Visitor & IP', 'Monitor dan kelola visitor']
-    };
-    const t = titles[name] || titles.overview;
-    if ($('topbar-title')) $('topbar-title').textContent = t[0];
-    if ($('topbar-sub')) $('topbar-sub').textContent = t[1];
+    bodyEl.appendChild(wrap);
+  }
 
-    if (window.innerWidth < 768) {
-      const panel = $('admin-sidebar');
-      if (panel && panel.classList.contains('is-open')) toggleAdminSidebar();
+  function appendUserMessage(text) {
+    var now = Date.now();
+    var b = createBubble('user');
+    b.bubble.innerHTML = formatMarkdown(text);
+    b.meta.textContent = formatTimestamp(now);
+    scrollToBottom();
+  }
+
+  function appendBotMessage(text, buttons, durationMs, startTimeMs) {
+    var now = Date.now();
+    var parsed = extractButtons(text);
+    var b = createBubble('bot');
+    b.bubble.innerHTML = formatMarkdown(parsed.clean);
+
+    var metaText = formatTimestamp(now);
+    if (startTimeMs) metaText = formatTimestamp(startTimeMs) + ' · ';
+    b.meta.innerHTML = metaText;
+
+    if (durationMs !== undefined && durationMs !== null) {
+      var dur = document.createElement('span');
+      dur.className = 'meta-duration';
+      dur.textContent = '⏱ ' + formatDuration(durationMs);
+      b.meta.appendChild(dur);
     }
 
-    if (name === 'overview') loadOverview();
-    if (name === 'users') loadUsers();
-    if (name === 'points') loadPointsLedger();
-    if (name === 'domains') loadDomains();
-    if (name === 'config') loadConfig();
-    if (name === 'visitors') loadVisitors();
+    var allButtons = (buttons && buttons.length > 0) ? buttons : parsed.buttons;
+    if (allButtons && allButtons.length > 0) {
+      renderInlineButtons(b.body || b.meta.parentElement, allButtons, false);
+    }
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (window.lucide) window.lucide.createIcons();
+    scrollToBottom();
   }
 
-  function openModal(id) {
-    const m = $(id);
-    if (m) m.classList.remove('hidden');
+  function appendErrorMessage(text) {
+    var now = Date.now();
+    var b = createBubble('bot');
+    b.bubble.innerHTML = '<span style="color:#dc2626;">' + formatMarkdown(text) + '</span>';
+    b.meta.textContent = formatTimestamp(now);
+    scrollToBottom();
   }
 
-  function closeModal(id) {
-    const m = $(id);
-    if (m) m.classList.add('hidden');
+  function showQuickReplies(buttons) {
+    var wrap = $('ai-quick-wrap');
+    var list = $('ai-quick-list');
+    if (!wrap || !list) return;
+
+    if (!buttons || buttons.length === 0) {
+      wrap.style.display = 'none';
+      return;
+    }
+
+    wrap.style.display = '';
+    list.innerHTML = '';
+    buttons.forEach(function (text) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ai-quick-btn';
+      btn.textContent = text;
+      btn.addEventListener('click', function () {
+        if (isBusy) return;
+        sendMessage(text);
+      });
+      list.appendChild(btn);
+    });
   }
 
-  async function tryFetchMe() {
-    return await apiFetch('/api/web/auth/me', { skipAuthRedirect: true });
+  function hideQuickReplies() {
+    var wrap = $('ai-quick-wrap');
+    if (wrap) wrap.style.display = 'none';
   }
 
-  async function guardRole() {
-    const token = getToken();
+  function parseSseChunk(line) {
+    if (!line || line.indexOf('data:') !== 0) return null;
+    var payload = line.slice(5).trim();
+    if (!payload || payload === '[DONE]') return null;
+    try {
+      var obj = JSON.parse(payload);
+      var choice = obj && obj.choices && obj.choices[0];
+      if (!choice) return null;
+      var delta = choice.delta || choice.message;
+      if (delta && typeof delta.content === 'string') return delta.content;
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  async function streamFromBackend(message, startTime) {
+    var historyForApi = chatHistory.slice(-MAX_HISTORY_SEND).map(function (h) {
+      return { role: h.role, content: h.content };
+    });
+
+    var token = (typeof getToken === 'function') ? getToken() : null;
     if (!token) {
-      window.location.replace('login.html');
-      return false;
+      throw new Error('Sesi login tidak valid. Silakan login ulang.');
     }
 
-    let res = null;
-    try {
-      res = await tryFetchMe();
-    } catch (e) {}
-
-    if (!res?.data?.user) {
-      clearToken();
-      window.location.replace('login.html');
-      return false;
-    }
-
-    const user = res.data.user;
-    if (!ROLE_ALLOWED.includes(user.role)) {
-      window.location.replace('404.html');
-      return false;
-    }
-
-    state.user = user;
-    setToken(getToken(), user);
-
-    if ($('admin-avatar')) $('admin-avatar').textContent = (user.display_name || user.email).charAt(0).toUpperCase();
-    if ($('admin-name')) $('admin-name').textContent = user.display_name || user.email.split('@')[0];
-    if ($('admin-email')) $('admin-email').textContent = user.email;
-
-    return true;
-  }
-
-  async function loadOverview() {
-    try {
-      const res = await apiFetch('/api/admin/web/stats');
-      const d = res?.data || {};
-      const m = d.mailboxes || {};
-      const v = d.visitors || {};
-      const msgs = d.messages || {};
-
-      if ($('stat-users')) $('stat-users').textContent = fmtNum(v.total || 0);
-      if ($('stat-users-hint')) $('stat-users-hint').textContent = (v.active_24h || 0) + ' aktif 24 jam';
-
-      if ($('stat-mailboxes')) $('stat-mailboxes').textContent = fmtNum(m.total || 0);
-      if ($('stat-mailboxes-hint')) $('stat-mailboxes-hint').textContent = (m.active || 0) + ' aktif · ' + (m.expired || 0) + ' expired';
-
-      if ($('stat-subdomains')) $('stat-subdomains').textContent = fmtNum(msgs.total || 0);
-      if ($('stat-subdomains-hint')) $('stat-subdomains-hint').textContent = 'Total pesan masuk';
-
-      if ($('stat-points')) $('stat-points').textContent = fmtNum(v.banned || 0);
-      if ($('stat-points-hint')) $('stat-points-hint').textContent = (v.whitelist || 0) + ' whitelist';
-
-      if ($('nav-user-count')) $('nav-user-count').textContent = fmtNum(v.total || 0);
-
-      renderRecentActivity();
-    } catch (err) {
-      adminToast(err.message || 'Gagal memuat overview', 'error');
-    }
-  }
-
-  async function renderRecentActivity() {
-    const box = $('recent-activity');
-    if (!box) return;
-
-    try {
-      const res = await apiFetch('/api/admin/web/points/ledger?limit=5');
-      const txs = res?.data?.transactions || [];
-
-      if (!txs.length) {
-        box.innerHTML = '<p class="p-4 text-xs text-slate-500 text-center">Belum ada transaksi.</p>';
-        return;
-      }
-
-      box.innerHTML = txs.map(t => {
-        const isPlus = t.delta > 0;
-        let label = t.reason || 'Transaksi';
-        if (t.reason === 'signup_bonus') label = 'Signup bonus';
-        else if (t.reason === 'create_pointing_subdomain') label = 'Create subdomain';
-        else if (t.reason === 'create_termux_subdomain') label = 'Create termux';
-        else if (t.reason === 'admin_adjustment') label = 'Admin adjustment';
-
-        return `
-          <div class="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition">
-            <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${isPlus ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}">${isPlus ? '+' : '−'}</div>
-            <div class="min-w-0 flex-1">
-              <p class="text-xs font-bold text-slate-800 truncate">${esc(label)}</p>
-              <p class="text-[10px] text-slate-500 truncate">${esc(t.email || t.user_id || '-')}</p>
-            </div>
-            <div class="text-right shrink-0">
-              <p class="text-xs font-bold ${isPlus ? 'text-emerald-600' : 'text-red-600'}">${isPlus ? '+' : ''}${fmtNum(t.delta)}</p>
-              <p class="text-[10px] text-slate-400">${esc(fmtRel(t.created_at))}</p>
-            </div>
-          </div>`;
-      }).join('');
-    } catch (err) {
-      box.innerHTML = `<p class="p-4 text-xs text-red-500">${esc(err.message)}</p>`;
-    }
-  }
-
-  async function loadUsers() {
-    const wrap = $('users-tbody');
-    if (wrap) wrap.innerHTML = '<div class="admin-skeleton h-14 w-full rounded-xl mb-2"></div><div class="admin-skeleton h-14 w-full rounded-xl"></div>';
-
-    try {
-      const params = new URLSearchParams();
-      params.set('limit', state.usersLimit);
-      params.set('offset', state.usersPage * state.usersLimit);
-      if (state.usersFilter) params.set('filter', state.usersFilter);
-
-      const res = await apiFetch('/api/admin/web/users?' + params.toString());
-      const users = res?.data?.users || [];
-      state.usersTotal = res?.data?.total || 0;
-
-      const filtered = state.usersSearch
-        ? users.filter(u => (u.email || '').toLowerCase().includes(state.usersSearch) || (u.display_name || '').toLowerCase().includes(state.usersSearch))
-        : users;
-
-      if (!filtered.length) {
-        wrap.innerHTML = '<div class="p-8 text-center text-xs text-slate-400">Tidak ada user.</div>';
-        renderUsersPagination();
-        return;
-      }
-
-      wrap.innerHTML = filtered.map(u => {
-        let statusBadge = u.banned
-          ? '<span class="admin-badge admin-badge-red">Banned</span>'
-          : (!u.email_verified ? '<span class="admin-badge admin-badge-amber">Unverified</span>' : '<span class="admin-badge admin-badge-green">Verified</span>');
-        
-        let tierBadge = '';
-        if (u.tier === 'owner') tierBadge = '<span class="admin-badge admin-badge-default">OWNER</span>';
-        else if (u.tier === 'premium') tierBadge = '<span class="admin-badge admin-badge-amber">Premium</span>';
-        else tierBadge = '<span class="admin-badge admin-badge-gray">Free</span>';
-
-        return `
-          <div class="admin-data-row" style="padding: 10px 14px; gap: 8px;">
-            <div class="admin-data-info" style="gap: 10px;">
-              <div class="admin-data-avatar" style="width: 32px; height: 32px; font-size: 14px; border-radius: 8px;">${esc((u.display_name || u.email).charAt(0).toUpperCase())}</div>
-              <div class="admin-data-text">
-                <p class="admin-data-title" style="font-size: 13px;">${esc(u.email)}</p>
-                <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-                  <span class="text-[10px] text-slate-500">${esc(u.display_name || '-')}</span>
-                  ${tierBadge} ${statusBadge}
-                </div>
-              </div>
-            </div>
-            <div class="flex flex-col items-end gap-1 shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
-              <div class="text-right">
-                <p class="text-xs font-extrabold text-amber-600">${fmtNum(u.points || 0)} Poin</p>
-                <p class="text-[9px] text-slate-400">Daftar: ${esc(fmtDate(u.created_at))}</p>
-              </div>
-              <div class="flex gap-1.5 w-full sm:w-auto justify-end mt-1">
-                <button onclick="openUserDetail('${esc(u.id)}')" class="admin-btn-secondary" style="padding:4px 10px; font-size:10px;">Detail</button>
-                <button onclick="openUserPointsModal('${esc(u.id)}','${esc(u.email)}',${u.points || 0})" class="admin-btn-secondary" style="padding:4px 10px; font-size:10px; color:#d97706; border-color:#fde68a; background:#fffbeb;">Kelola Poin</button>
-              </div>
-            </div>
-          </div>`;
-      }).join('');
-
-      renderUsersPagination();
-    } catch (err) {
-      wrap.innerHTML = `<div class="p-8 text-center text-xs text-red-500">${esc(err.message)}</div>`;
-    }
-  }
-
-  function renderUsersPagination() {
-    const wrap = $('users-pagination');
-    if (!wrap) return;
-
-    const start = state.usersPage * state.usersLimit + 1;
-    const end = Math.min((state.usersPage + 1) * state.usersLimit, state.usersTotal);
-    const hasPrev = state.usersPage > 0;
-    const hasNext = (state.usersPage + 1) * state.usersLimit < state.usersTotal;
-
-    wrap.innerHTML = `
-      <span class="text-xs text-slate-500">Menampilkan ${state.usersTotal ? start : 0}–${end} dari ${state.usersTotal}</span>
-      <div class="flex gap-2">
-        <button onclick="changeUsersPage(-1)" ${!hasPrev ? 'disabled' : ''} class="admin-btn-secondary" style="padding:6px 12px; font-size:11px; opacity:${hasPrev ? '1' : '0.4'}">Prev</button>
-        <button onclick="changeUsersPage(1)" ${!hasNext ? 'disabled' : ''} class="admin-btn-secondary" style="padding:6px 12px; font-size:11px; opacity:${hasNext ? '1' : '0.4'}">Next</button>
-      </div>`;
-  }
-
-  function changeUsersPage(delta) {
-    const next = state.usersPage + delta;
-    if (next < 0) return;
-    if (delta > 0 && (next * state.usersLimit) >= state.usersTotal) return;
-    state.usersPage = next;
-    loadUsers();
-  }
-
-  function filterUsers() {
-    state.usersFilter = $('user-filter')?.value || '';
-    state.usersPage = 0;
-    loadUsers();
-  }
-
-  function searchUsers() {
-    state.usersSearch = ($('user-search')?.value || '').trim().toLowerCase();
-    loadUsers();
-  }
-
-  async function openUserDetail(userId) {
-    state.currentUserId = userId;
-    const modal = $('modal-user-detail');
-    const body = $('modal-user-body');
-    if (!modal || !body) return;
-
-    if ($('modal-user-email')) $('modal-user-email').textContent = 'Memuat...';
-    body.innerHTML = '<div class="admin-skeleton h-32 w-full rounded-xl"></div>';
-    openModal('modal-user-detail');
-
-    try {
-      const res = await apiFetch('/api/admin/web/users/' + encodeURIComponent(userId));
-      const u = res?.data || {};
-      if ($('modal-user-email')) $('modal-user-email').textContent = u.email || '-';
-
-      const infoRow = (label, value) => `
-        <div class="flex justify-between py-1.5 border-b border-slate-100">
-          <span class="text-[11px] text-slate-500">${esc(label)}</span>
-          <span class="text-[11px] font-semibold text-slate-800 text-right">${value}</span>
-        </div>`;
-
-      let tierBadge = 'admin-badge-gray';
-      if (u.tier === 'owner') tierBadge = 'admin-badge-default';
-      else if (u.tier === 'premium') tierBadge = 'admin-badge-amber';
-
-      body.innerHTML = `
-        <div class="space-y-0.5 mb-4">
-          ${infoRow('Nama', esc(u.display_name || '-'))}
-          ${infoRow('Email Verified', u.email_verified ? '<span class="text-emerald-600">Ya</span>' : '<span class="text-red-600">Tidak</span>')}
-          ${infoRow('Poin', `<span class="text-amber-600 font-bold">${fmtNum(u.points || 0)}</span>`)}
-          ${infoRow('Login Count', fmtNum(u.login_count || 0))}
-          ${infoRow('Last Login', esc(fmtDate(u.last_login)))}
-          ${infoRow('Signup IP', `<span class="font-mono text-xs">${esc(u.signup_ip || '-')}</span>`)}
-          ${infoRow('Mailbox Aktif', fmtNum(u.mailbox_count || 0))}
-          ${infoRow('Subdomain', fmtNum(u.subdomain_count || 0))}
-          ${infoRow('Sesi Aktif', fmtNum(u.active_sessions || 0))}
-        </div>
-
-        <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 mb-4">
-          <h4 class="text-xs font-bold text-slate-800 mb-3">Edit Role &amp; Tier</h4>
-          <div class="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <label class="admin-field-label">Role Akses</label>
-              <select id="edit-user-role" class="admin-field-input">
-                <option value="user" ${u.role === 'user' ? 'selected' : ''}>User (Hanya Dashboard)</option>
-                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin (Bisa Buka /admin)</option>
-                <option value="owner" ${u.role === 'owner' ? 'selected' : ''}>Owner (Akses Penuh)</option>
-              </select>
-            </div>
-            <div>
-              <label class="admin-field-label">Tier Limit</label>
-              <select id="edit-user-tier" class="admin-field-input">
-                <option value="free" ${u.tier === 'free' ? 'selected' : ''}>Free</option>
-                <option value="premium" ${u.tier === 'premium' ? 'selected' : ''}>Premium</option>
-                <option value="owner" ${u.tier === 'owner' ? 'selected' : ''}>Owner (Unlimited)</option>
-              </select>
-            </div>
-          </div>
-          <button onclick="submitUserRoleTier('${esc(u.id)}')" class="w-full admin-btn-primary justify-center" style="padding: 8px; font-size: 11px;">Simpan Perubahan Role &amp; Tier</button>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <button onclick="openUserPointsModal('${esc(u.id)}','${esc(u.email)}',${u.points || 0})" class="admin-btn-primary justify-center" style="width:100%; font-size:11px; padding:8px;">Kelola Poin</button>
-          ${u.banned
-            ? `<button onclick="submitUserUnban('${esc(u.id)}')" class="admin-btn-secondary justify-center" style="width:100%; font-size:11px; padding:8px;">Unban</button>`
-            : `<button onclick="openBanModal('${esc(u.id)}','${esc(u.email)}')" class="admin-btn-secondary justify-center" style="color:#b91c1c;border-color:#fecaca; width:100%; font-size:11px; padding:8px;">Ban</button>`}
-          <button onclick="submitDeleteUser('${esc(u.id)}','${esc(u.email)}')" class="admin-btn-danger justify-center col-span-2" style="width:100%; margin-top:4px; font-size:11px; padding:8px;">Hapus Akun Permanen</button>
-        </div>`;
-    } catch (err) {
-      body.innerHTML = `<p class="text-xs text-red-500 p-4">${esc(err.message)}</p>`;
-    }
-  }
-
-  async function submitUserRoleTier(userId) {
-    const role = $('edit-user-role')?.value;
-    const tier = $('edit-user-tier')?.value;
-    if (!role || !tier) return;
-
-    adminLoading(true);
-    try {
-      await apiFetch('/api/admin/web/users/' + encodeURIComponent(userId), {
-        method: 'PATCH',
-        body: { role, tier }
-      });
-      adminToast('Role & Tier berhasil diupdate', 'success');
-      closeModal('modal-user-detail');
-      loadUsers();
-    } catch (err) {
-      adminToast(err.message, 'error');
-    } finally {
-      adminLoading(false);
-    }
-  }
-
-  function openUserPointsModal(userId, email, currentPoints) {
-    state.currentUserId = userId;
-    state.currentUserEmail = email;
-    state.currentUserPoints = currentPoints || 0;
-
-    if ($('modal-points-email')) $('modal-points-email').textContent = email + ' (saldo: ' + fmtNum(currentPoints) + ')';
-    if ($('modal-points-delta')) $('modal-points-delta').value = '';
-    if ($('modal-points-reason')) $('modal-points-reason').value = '';
-
-    openModal('modal-user-points');
-  }
-
-  async function submitUserPoints() {
-    const delta = parseInt($('modal-points-delta')?.value);
-    const reason = ($('modal-points-reason')?.value || '').trim() || 'admin_adjustment';
-
-    if (!Number.isInteger(delta) || delta === 0) {
-      adminToast('Delta harus bilangan bulat selain nol', 'error');
-      return;
-    }
-
-    adminLoading(true);
-    try {
-      const res = await apiFetch('/api/admin/web/users/' + encodeURIComponent(state.currentUserId) + '/points', {
-        method: 'POST',
-        body: { delta, reason, admin_id: state.user?.email || 'admin' }
-      });
-      adminToast('Poin disesuaikan. Saldo baru: ' + fmtNum(res.data.balance_after), 'success');
-      closeModal('modal-user-points');
-      loadUsers();
-      if (!$('modal-user-detail')?.classList.contains('hidden')) openUserDetail(state.currentUserId);
-    } catch (err) {
-      adminToast(err.message, 'error');
-    } finally {
-      adminLoading(false);
-    }
-  }
-
-  function openBanModal(userId, email) {
-    state.currentUserId = userId;
-    if ($('modal-ban-email')) $('modal-ban-email').textContent = email;
-    if ($('modal-ban-duration')) $('modal-ban-duration').value = '24';
-    if ($('modal-ban-reason')) $('modal-ban-reason').value = '';
-    openModal('modal-user-ban');
-  }
-
-  async function submitUserBan() {
-    const duration = parseInt($('modal-ban-duration')?.value || '24');
-    const reason = ($('modal-ban-reason')?.value || '').trim() || 'Diblokir oleh admin';
-
-    if (isNaN(duration) || duration < 0) {
-      adminToast('Durasi tidak valid', 'error');
-      return;
-    }
-
-    adminLoading(true);
-    try {
-      await apiFetch('/api/admin/web/users/' + encodeURIComponent(state.currentUserId) + '/ban', {
-        method: 'POST',
-        body: { reason, duration_hours: duration }
-      });
-      adminToast('User dibanned', 'success');
-      closeModal('modal-user-ban');
-      closeModal('modal-user-detail');
-      loadUsers();
-    } catch (err) {
-      adminToast(err.message, 'error');
-    } finally {
-      adminLoading(false);
-    }
-  }
-
-  async function submitUserUnban(userId) {
-    if (!confirm('Yakin unban user ini?')) return;
-    adminLoading(true);
-    try {
-      await apiFetch('/api/admin/web/users/' + encodeURIComponent(userId) + '/unban', { method: 'POST' });
-      adminToast('User di-unban', 'success');
-      closeModal('modal-user-detail');
-      loadUsers();
-    } catch (err) {
-      adminToast(err.message, 'error');
-    } finally {
-      adminLoading(false);
-    }
-  }
-
-  async function submitDeleteUser(userId, email) {
-    const input = prompt('Ketik "' + email + '" untuk konfirmasi hapus permanen:');
-    if (input !== email) {
-      adminToast('Konfirmasi salah', 'warning');
-      return;
-    }
-
-    adminLoading(true);
-    try {
-      await apiFetch('/api/admin/web/users/' + encodeURIComponent(userId), { method: 'DELETE' });
-      adminToast('User dihapus permanen', 'success');
-      closeModal('modal-user-detail');
-      loadUsers();
-    } catch (err) {
-      adminToast(err.message, 'error');
-    } finally {
-      adminLoading(false);
-    }
-  }
-
-  async function loadPointsLedger() {
-    const tbody = $('ledger-tbody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="5" class="text-center p-8"><div class="admin-skeleton h-12 w-full rounded-xl"></div></td></tr>';
-
-    try {
-      const reason = $('ledger-reason')?.value || '';
-      const params = new URLSearchParams();
-      params.set('limit', '100');
-      if (reason) params.set('reason', reason);
-
-      const res = await apiFetch('/api/admin/web/points/ledger?' + params.toString());
-      const txs = res?.data?.transactions || [];
-
-      if (!txs.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center p-8 text-xs text-slate-400">Belum ada transaksi.</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = txs.map(t => {
-        const isPlus = t.delta > 0;
-        return `
-          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-            <td class="p-4 text-xs text-slate-500">${esc(fmtRel(t.created_at))}</td>
-            <td class="p-4 text-xs font-semibold">${esc(t.email || t.user_id)}</td>
-            <td class="p-4 font-bold ${isPlus ? 'text-emerald-600' : 'text-red-600'}">${isPlus ? '+' : ''}${fmtNum(t.delta)}</td>
-            <td class="p-4 font-semibold text-slate-800">${fmtNum(t.balance_after)}</td>
-            <td class="p-4 text-xs text-slate-600">${esc(t.reason || '-')}</td>
-          </tr>`;
-      }).join('');
-    } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="5" class="text-center p-8 text-xs text-red-500">${esc(err.message)}</td></tr>`;
-    }
-  }
-
-  async function loadDomains() {
-    const wrap = $('domains-list');
-    if (wrap) wrap.innerHTML = '<div class="admin-skeleton h-16 w-full rounded-xl mb-3"></div><div class="admin-skeleton h-16 w-full rounded-xl"></div>';
-
-    try {
-      const res = await apiFetch('/api/admin/web/domains');
-      const domains = res?.data?.domains || [];
-
-      if (!domains.length) {
-        wrap.innerHTML = '<div class="p-8 text-center text-xs text-slate-400">Belum ada domain. Klik "Tambah Domain".</div>';
-        return;
-      }
-
-      wrap.innerHTML = domains.map(d => {
-        const defaultBadge = d.is_default ? '<span class="admin-badge admin-badge-default">DEFAULT</span>' : '';
-        const activeBadge = d.is_active ? '<span class="admin-badge admin-badge-green">Aktif</span>' : '<span class="admin-badge admin-badge-red">Nonaktif</span>';
-        
-        let routingBadge = '';
-        if (d.is_routing_active === 1) {
-          routingBadge = '<span class="admin-badge admin-badge-green">Routing Active</span>';
-        } else {
-          routingBadge = '<span class="admin-badge admin-badge-gray">Routing Off</span>';
-        }
-
-        return `
-          <div class="admin-domain-card">
-            <div class="min-w-0 flex-1">
-              <p class="font-mono text-sm font-bold text-slate-900 break-all">${esc(d.domain)}</p>
-              <div class="flex items-center gap-2 mt-1 flex-wrap">
-                ${activeBadge} ${defaultBadge} ${routingBadge}
-                <span class="text-[11px] text-slate-500">${esc(d.description || '-')}</span>
-              </div>
-              <p class="text-[10px] text-slate-400 mt-1">Dibuat: ${esc(fmtDate(d.created_at))}</p>
-            </div>
-            <div class="flex items-center gap-2 shrink-0 mt-3 sm:mt-0 flex-wrap justify-end">
-              <button onclick="toggleDomainRouting('${esc(d.id)}', ${d.is_routing_active === 1})" class="admin-btn-secondary" style="padding:6px 10px; font-size:11px; color:${d.is_routing_active === 1 ? '#b91c1c' : '#059669'}; border-color:${d.is_routing_active === 1 ? '#fecaca' : '#a7f3d0'}; background:${d.is_routing_active === 1 ? '#fef2f2' : '#ecfdf5'};">
-                ${d.is_routing_active === 1 ? 'Matikan Routing' : 'Aktifkan Routing'}
-              </button>
-              ${!d.is_default ? `<button onclick="setDefaultDomain('${esc(d.id)}')" class="admin-btn-secondary" style="padding:6px 10px; font-size:11px;">Jadikan Default</button>` : ''}
-              ${!d.is_default ? `<button onclick="deleteDomain('${esc(d.id)}', '${esc(d.domain)}')" class="admin-btn-secondary" style="padding:6px 10px; font-size:11px; color:#b91c1c; border-color:#fecaca;">Hapus</button>` : ''}
-            </div>
-          </div>`;
-      }).join('');
-    } catch (err) {
-      wrap.innerHTML = `<div class="p-8 text-center text-xs text-red-500">${esc(err.message)}</div>`;
-    }
-  }
-
-  async function toggleDomainRouting(id, isActive) {
-    const actionText = isActive ? 'menonaktifkan' : 'mengaktifkan';
-    if (!confirm(`Yakin ingin ${actionText} Email Routing untuk domain ini?`)) return;
-
-    adminLoading(true);
-    try {
-      const res = await apiFetch('/api/admin/web/domains/' + encodeURIComponent(id) + '/toggle-routing', {
-        method: 'PATCH',
-        skipAuthRedirect: true
-      });
-      const successMsg = res?.message || 'Routing berhasil diubah';
-      adminToast(successMsg, 'success');
-      loadDomains();
-    } catch (err) {
-      adminToast(err.message || 'Gagal mengubah routing', 'error');
-    } finally {
-      adminLoading(false);
-    }
-  }
-
-  function openAddDomainModal() {
-    if ($('modal-domain-value')) $('modal-domain-value').value = '';
-    if ($('modal-domain-zoneid')) $('modal-domain-zoneid').value = '';
-    if ($('modal-domain-desc')) $('modal-domain-desc').value = '';
-    if ($('modal-domain-default')) $('modal-domain-default').checked = false;
-    openModal('modal-add-domain');
-  }
-
-  async function submitAddDomain() {
-    const domain = ($('modal-domain-value')?.value || '').trim().toLowerCase();
-    const zoneId = ($('modal-domain-zoneid')?.value || '').trim();
-    const description = ($('modal-domain-desc')?.value || '').trim();
-    const isDefault = $('modal-domain-default')?.checked || false;
-
-    if (!domain) {
-      adminToast('Domain wajib diisi', 'error');
-      return;
-    }
-
-    if (!zoneId) {
-      adminToast('Zone ID wajib diisi', 'error');
-      return;
-    }
-
-    adminLoading(true);
-    try {
-      await apiFetch('/api/admin/web/domains', {
-        method: 'POST',
-        body: { domain, cf_zone_id: zoneId, description, is_active: true, is_default: isDefault }
-      });
-      adminToast('Domain berhasil ditambahkan', 'success');
-      closeModal('modal-add-domain');
-      loadDomains();
-    } catch (err) {
-      adminToast(err.message, 'error');
-    } finally {
-      adminLoading(false);
-    }
-  }
-
-  async function setDefaultDomain(id) {
-    if (!confirm('Jadikan domain ini sebagai default? Domain lain akan dinonaktifkan status default-nya.')) return;
-    adminLoading(true);
-    try {
-      await apiFetch('/api/admin/web/domains/' + encodeURIComponent(id), {
-        method: 'PATCH',
-        body: { is_default: true }
-      });
-      adminToast('Domain default diubah', 'success');
-      loadDomains();
-    } catch (err) {
-      adminToast(err.message, 'error');
-    } finally {
-      adminLoading(false);
-    }
-  }
-
-  async function deleteDomain(id, domain) {
-    const input = prompt('Ketik "' + domain + '" untuk konfirmasi hapus domain:');
-    if (input !== domain) {
-      adminToast('Konfirmasi salah', 'warning');
-      return;
-    }
-
-    adminLoading(true);
-    try {
-      await apiFetch('/api/admin/web/domains/' + encodeURIComponent(id), { method: 'DELETE' });
-      adminToast('Domain dihapus', 'success');
-      loadDomains();
-    } catch (err) {
-      adminToast(err.message, 'error');
-    } finally {
-      adminLoading(false);
-    }
-  }
-
-  const CONFIG_KEYS = [
-    { key: 'signup_bonus_points', label: 'Bonus Signup', unit: 'poin', group: 'Poin & Subdomain' },
-    { key: 'subdomain_pointing_cost', label: 'Biaya Subdomain Pointing', unit: 'poin', group: 'Poin & Subdomain' },
-    { key: 'subdomain_termux_cost', label: 'Biaya Subdomain Termux', unit: 'poin', group: 'Poin & Subdomain' },
-    { key: 'free_max_active_subdomain', label: 'Max Subdomain Aktif (Free)', unit: 'slot', group: 'Poin & Subdomain' },
-    { key: 'premium_max_active_subdomain', label: 'Max Subdomain Aktif (Premium)', unit: 'slot', group: 'Poin & Subdomain' },
-
-    { key: 'mailbox_duration_minutes', label: 'Durasi Mailbox Default', unit: 'menit', group: 'Mailbox' },
-    { key: 'max_messages_per_mailbox', label: 'Max Pesan per Mailbox', unit: 'pesan', group: 'Mailbox' },
-    { key: 'max_concurrent_mailbox', label: 'Max Mailbox Aktif per Akun', unit: 'mailbox', group: 'Mailbox' },
-    { key: 'global_max_mailbox_per_day', label: 'Global Max Mailbox / Hari', unit: 'mailbox', group: 'Mailbox' },
-
-    { key: 'free_user_daily_limit', label: 'Free: Limit Mailbox / Hari', unit: 'mailbox', group: 'Limit per Akun (Free)' },
-    { key: 'free_user_mailbox_duration', label: 'Free: Durasi Mailbox', unit: 'menit', group: 'Limit per Akun (Free)' },
-    { key: 'free_user_max_messages', label: 'Free: Max Pesan', unit: 'pesan', group: 'Limit per Akun (Free)' },
-
-    { key: 'premium_user_daily_limit', label: 'Premium: Limit Mailbox / Hari', unit: 'mailbox', group: 'Limit per Akun (Premium)' },
-    { key: 'premium_user_mailbox_duration', label: 'Premium: Durasi Mailbox', unit: 'menit', group: 'Limit per Akun (Premium)' },
-    { key: 'premium_user_max_messages', label: 'Premium: Max Pesan', unit: 'pesan', group: 'Limit per Akun (Premium)' },
-
-    { key: 'max_accounts_per_ip', label: 'Max Akun per IP', unit: 'akun', group: 'Keamanan' },
-    { key: 'max_accounts_per_device', label: 'Max Akun per Device', unit: 'akun', group: 'Keamanan' },
-    { key: 'captcha_enabled', label: 'Captcha Aktif', unit: '1/0', group: 'Keamanan' },
-    { key: 'email_whitelist_enabled', label: 'Whitelist Provider Aktif', unit: '1/0', group: 'Keamanan' },
-
-    { key: 'maintenance_mode', label: 'Mode Maintenance', unit: '1/0', group: 'Sistem' },
-    { key: 'web_enabled', label: 'Web Aktif', unit: '1/0', group: 'Sistem' },
-    { key: 'require_login', label: 'Wajib Login', unit: '1/0', group: 'Sistem' },
-    { key: 'broadcast_banner', label: 'Broadcast Banner', unit: 'teks', group: 'Sistem' },
-
-    { key: 'ai_provider1_enabled', label: 'Provider 1 (9Router) Aktif', unit: '1/0', group: 'AI Chatbot' },
-    { key: 'ai_provider1_api_key', label: 'Provider 1 API Key', unit: 'secret', group: 'AI Chatbot' },
-    { key: 'ai_provider1_api_url', label: 'Provider 1 API URL', unit: 'url', group: 'AI Chatbot' },
-    { key: 'ai_provider1_model', label: 'Provider 1 Model', unit: 'teks', group: 'AI Chatbot' },
-    
-    { key: 'ai_provider2_enabled', label: 'Provider 2 (NVIDIA) Aktif', unit: '1/0', group: 'AI Chatbot' },
-    { key: 'ai_provider2_api_key', label: 'Provider 2 API Key', unit: 'secret', group: 'AI Chatbot' },
-    { key: 'ai_provider2_api_url', label: 'Provider 2 API URL', unit: 'url', group: 'AI Chatbot' },
-    { key: 'ai_provider2_model', label: 'Provider 2 Model', unit: 'teks', group: 'AI Chatbot' },
-    
-    { key: 'ai_max_input_length', label: 'Maks Input Chat (karakter)', unit: 'char', group: 'AI Chatbot' },
-    { key: 'ai_rate_limit_per_minute', label: 'Limit Pesan / Menit', unit: 'pesan', group: 'AI Chatbot' }
-  ];
-
-  const CONFIG_GROUP_ICONS = {
-    'Poin & Subdomain': 'coins',
-    'Mailbox': 'inbox',
-    'Limit per Akun (Free)': 'user',
-    'Limit per Akun (Premium)': 'crown',
-    'Keamanan': 'shield',
-    'Sistem': 'settings',
-    'AI Chatbot': 'sparkles'
-  };
-
-  function renderConfigField(c, map) {
-    const val = map[c.key] !== undefined ? map[c.key] : '';
-    const isBool = c.unit === '1/0';
-    const isSecret = c.unit === 'secret';
-    const isOn = val === '1' || val === 'true';
-
-    if (isBool) {
-      return `
-        <div class="config-field">
-          <div class="flex items-center justify-between gap-2 mb-2">
-            <label class="admin-field-label mb-0">${esc(c.label)}</label>
-            <span class="config-unit">${esc(c.unit)}</span>
-          </div>
-          <label class="config-toggle-wrap">
-            <input type="checkbox" data-config-key="${esc(c.key)}" data-config-type="bool" ${isOn ? 'checked' : ''} class="config-toggle-input" />
-            <span class="config-toggle-slider"></span>
-            <span class="config-toggle-label">${isOn ? 'Aktif' : 'Nonaktif'}</span>
-          </label>
-        </div>`;
-    }
-
-    if (isSecret) {
-      return `
-        <div class="config-field" style="grid-column: 1 / -1;">
-          <div class="flex items-center justify-between gap-2 mb-2">
-            <label class="admin-field-label mb-0">${esc(c.label)}</label>
-            <span class="config-unit">${esc(c.unit)}</span>
-          </div>
-          <div style="position: relative;">
-            <input type="password" data-config-key="${esc(c.key)}" data-config-type="secret" value="${esc(val)}" class="admin-field-input" style="padding-right: 120px; font-family: 'JetBrains Mono', monospace; font-size: 12px;" autocomplete="off" spellcheck="false" />
-            <div style="position: absolute; top: 50%; right: 6px; transform: translateY(-50%); display: flex; gap: 4px;">
-              <button type="button" onclick="testApiKey(this)" style="height: 28px; padding: 0 10px; border-radius: 6px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700;" title="Cek Validitas">
-                Cek
-              </button>
-              <button type="button" onclick="toggleSecretVisibility(this)" style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; border: 1px solid #e2e8f0; color: #475569; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Tampilkan/Sembunyikan">
-                <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
-              </button>
-              <button type="button" onclick="clearSecretField(this)" style="width: 28px; height: 28px; border-radius: 6px; background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Kosongkan">
-                <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
-              </button>
-            </div>
-          </div>
-          <p class="text-[10px] text-slate-400 mt-1">Kosongkan dan simpan untuk menghapus key. Nilai key akan disamarkan saat ditampilkan.</p>
-        </div>`;
-    }
-
-    const template = AI_TEMPLATES[c.key] || '';
-    let displayVal = val;
-    let isPlaceholder = false;
-
-    if (!displayVal && template) {
-      displayVal = template;
-      isPlaceholder = true;
-    }
-
-    return `
-      <div class="config-field">
-        <div class="flex items-center justify-between gap-2 mb-2">
-          <label class="admin-field-label mb-0">${esc(c.label)}</label>
-          <span class="config-unit">${esc(c.unit)}</span>
-        </div>
-        <input type="text" data-config-key="${esc(c.key)}" data-config-type="text" value="${esc(displayVal)}" class="admin-field-input" data-is-template="${isPlaceholder ? '1' : '0'}" style="${isPlaceholder ? 'color: #94a3b8; font-style: italic;' : ''}" />
-      </div>`;
-  }
-
-  function renderConfigTab(groupName) {
-    state.activeConfigGroup = groupName;
-    const tabs = $('config-tabs');
-    const panel = $('config-grid');
-    if (!tabs || !panel || !state.configsGroups) return;
-
-    const groups = state.configsGroups;
-
-    tabs.innerHTML = Object.keys(groups).map(name => {
-      const icon = CONFIG_GROUP_ICONS[name] || 'folder';
-      const active = name === groupName ? 'active' : '';
-      return `<button class="config-tab ${active}" data-group="${esc(name)}" onclick="switchConfigTab('${esc(name)}')">
-        <i data-lucide="${icon}" class="w-4 h-4"></i>
-        <span>${esc(name)}</span>
-      </button>`;
-    }).join('');
-
-    const items = groups[groupName] || [];
-    panel.innerHTML = items.map(c => renderConfigField(c, state.configs)).join('');
-
-    panel.querySelectorAll('.config-toggle-input').forEach(inp => {
-      inp.addEventListener('change', function () {
-        const label = this.parentElement.querySelector('.config-toggle-label');
-        if (label) label.textContent = this.checked ? 'Aktif' : 'Nonaktif';
-      });
+    var url = (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '') + '/api/web/ai/chat';
+
+    var res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({
+        message: message,
+        history: historyForApi
+      })
     });
 
-    panel.querySelectorAll('input[data-is-template="1"]').forEach(inp => {
-      inp.addEventListener('input', function () {
-        this.style.color = '';
-        this.style.fontStyle = '';
-        this.setAttribute('data-is-template', '0');
-      });
-    });
-
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  function toggleSecretVisibility(btn) {
-    const wrap = btn.closest('div').parentElement;
-    const input = wrap.querySelector('input[data-config-type="secret"]');
-    if (!input) return;
-    const icon = btn.querySelector('i');
-    if (input.type === 'password') {
-      input.type = 'text';
-      if (icon) icon.setAttribute('data-lucide', 'eye-off');
-    } else {
-      input.type = 'password';
-      if (icon) icon.setAttribute('data-lucide', 'eye');
-    }
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  function clearSecretField(btn) {
-    const wrap = btn.closest('div').parentElement;
-    const input = wrap.querySelector('input[data-config-type="secret"]');
-    if (!input) return;
-    if (!confirm('Kosongkan field ini? Setelah disimpan, key akan terhapus.')) return;
-    input.value = '';
-    input.focus();
-    adminToast('Field dikosongkan. Klik Simpan untuk apply.', 'warning');
-  }
-
-  async function testApiKey(btn) {
-    const wrap = btn.closest('div').parentElement;
-    const input = wrap.querySelector('input[data-config-type="secret"]');
-    if (!input) return;
-    
-    const key = input.value.trim();
-    const fieldWrap = btn.closest('.config-field');
-    const urlInput = fieldWrap.querySelector('input[data-config-key$="_api_url"]');
-    const modelInput = fieldWrap.querySelector('input[data-config-key$="_model"]');
-
-    if (!key) {
-      adminToast('API Key masih kosong', 'warning');
-      return;
+    if (!res.ok) {
+      var errData = null;
+      try { errData = await res.json(); } catch (e) {}
+      var errMsg = (errData && errData.error) || ('Terjadi kesalahan (' + res.status + ')');
+      var err = new Error(errMsg);
+      err.status = res.status;
+      throw err;
     }
 
-    adminLoading(true);
-    try {
-      const res = await apiFetch('/api/admin/web/ai-test', {
-        method: 'POST',
-        body: {
-          api_key: key,
-          api_url: urlInput ? urlInput.value.trim() : '',
-          model: modelInput ? modelInput.value.trim() : ''
-        }
-      });
-      adminToast(res.message || 'API Key valid dan dapat terhubung!', 'success');
-    } catch (err) {
-      adminToast(err.message || 'Gagal terkoneksi ke AI', 'error');
-    } finally {
-      adminLoading(false);
+    var contentType = res.headers.get('content-type') || '';
+
+    if (contentType.indexOf('application/json') !== -1) {
+      var data = await res.json();
+      return {
+        type: 'json',
+        reply: data.reply || '',
+        buttons: data.buttons || [],
+        blocked: !!data.blocked,
+        durationMs: data.duration_ms || (nowMs() - startTime)
+      };
     }
+
+    if (!res.body) {
+      throw new Error('Respons AI kosong.');
+    }
+
+    return {
+      type: 'stream',
+      reader: res.body.getReader(),
+      startTime: startTime
+    };
   }
 
-  function switchConfigTab(name) {
-    if (state.configsGroups) {
-      renderConfigTab(name);
-    }
-  }
+  async function consumeStream(streamData) {
+    var reader = streamData.reader;
+    var decoder = new TextDecoder('utf-8');
+    var buffer = '';
+    var fullText = '';
+    var typingQueue = "";
+    var isTyping = false;
 
-  async function loadConfig() {
-    const panel = $('config-grid');
-    const tabs = $('config-tabs');
-    if (!panel) return;
-    panel.innerHTML = '<div class="admin-skeleton h-24 w-full rounded-xl"></div>';
-    if (tabs) tabs.innerHTML = '';
+    removeTypingIndicator();
+    var created = createBubble('bot');
 
-    try {
-      const res = await apiFetch('/api/admin/web/config');
-      const configArr = res?.data?.config || [];
-      const map = {};
-      configArr.forEach(c => { map[c.key] = c.value; });
-      state.configs = map;
-
-      const groups = {};
-      CONFIG_KEYS.forEach(c => {
-        if (!groups[c.group]) groups[c.group] = [];
-        groups[c.group].push(c);
-      });
-
-      state.configsGroups = groups;
-
-      const firstGroup = state.activeConfigGroup && groups[state.activeConfigGroup]
-        ? state.activeConfigGroup
-        : Object.keys(groups)[0];
-
-      renderConfigTab(firstGroup);
-    } catch (err) {
-      panel.innerHTML = `<p class="text-xs text-red-500 p-4">${esc(err.message)}</p>`;
-    }
-  }
-
-  async function saveConfig() {
-    const inputs = $all('input[data-config-key]');
-    const payload = {};
-
-    inputs.forEach(inp => {
-      const key = inp.getAttribute('data-config-key');
-      const type = inp.getAttribute('data-config-type');
-      let val;
-
-      if (type === 'bool') {
-        val = inp.checked ? '1' : '0';
+    function typeWriter() {
+      if (typingQueue.length > 0) {
+        var chunk = typingQueue.substring(0, 2);
+        typingQueue = typingQueue.substring(2);
+        
+        fullText += chunk;
+        var parsed = extractButtons(fullText);
+        created.bubble.innerHTML = formatMarkdown(parsed.clean);
+        scrollToBottom();
+        
+        setTimeout(typeWriter, 15);
       } else {
-        val = inp.value.trim();
-        if (inp.getAttribute('data-is-template') === '1') {
-          val = '';
+        isTyping = false;
+      }
+    }
+
+    try {
+      while (true) {
+        var read = await reader.read();
+        if (read.done) break;
+
+        buffer += decoder.decode(read.value, { stream: true });
+
+        var lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i].trim();
+          var chunk = parseSseChunk(line);
+          if (chunk) {
+            typingQueue += chunk;
+            if (!isTyping) {
+              isTyping = true;
+              typeWriter();
+            }
+          }
         }
       }
 
-      if (state.configs[key] !== val) {
-        if (type === 'secret' && val.indexOf('***MASKED***') !== -1) {
-          return;
-        }
-
-        const numKeys = [
-          'signup_bonus_points', 'subdomain_pointing_cost', 'subdomain_termux_cost',
-          'free_max_active_subdomain', 'premium_max_active_subdomain',
-          'mailbox_duration_minutes', 'max_messages_per_mailbox', 'max_concurrent_mailbox',
-          'global_max_mailbox_per_day', 'max_accounts_per_ip', 'max_accounts_per_device',
-          'free_user_daily_limit', 'free_user_mailbox_duration', 'free_user_max_messages',
-          'premium_user_daily_limit', 'premium_user_mailbox_duration', 'premium_user_max_messages',
-          'ai_max_input_length', 'ai_rate_limit_per_minute'
-        ];
-
-        if (numKeys.includes(key)) {
-          payload[key] = parseInt(val);
-          if (isNaN(payload[key])) payload[key] = 0;
-        } else if (val === '1' || val === '0' || val === 'true' || val === 'false') {
-          payload[key] = (val === '1' || val === 'true');
-        } else {
-          payload[key] = val;
+      if (buffer.trim()) {
+        var finalChunk = parseSseChunk(buffer.trim());
+        if (finalChunk) {
+           typingQueue += finalChunk;
+           if (!isTyping) { isTyping = true; typeWriter(); }
         }
       }
-    });
+      
+      while (typingQueue.length > 0) {
+        await new Promise(r => setTimeout(r, 30));
+      }
+      
+    } catch (streamErr) {
+      console.error('Stream read error:', streamErr);
+    }
 
-    if (Object.keys(payload).length === 0) {
-      adminToast('Tidak ada perubahan', 'warning');
+    var duration = nowMs() - streamData.startTime;
+    var parsedEnd = extractButtons(fullText);
+
+    created.meta.innerHTML = formatTimestamp(Date.now());
+    var dur = document.createElement('span');
+    dur.className = 'meta-duration';
+    dur.textContent = '⏱ ' + formatDuration(duration);
+    created.meta.appendChild(dur);
+
+    if (parsedEnd.buttons && parsedEnd.buttons.length > 0) {
+      renderInlineButtons(created.bubble.parentElement, parsedEnd.buttons, false);
+    }
+
+    return {
+      text: parsedEnd.clean,
+      buttons: parsedEnd.buttons
+    };
+  }
+
+  async function sendMessage(text) {
+    var clean = String(text || '').trim();
+    if (!clean || isBusy) return;
+
+    if (clean.length > MAX_INPUT) {
+      if (window.Utils && Utils.showToast) Utils.showToast('Pesan maksimal ' + MAX_INPUT + ' karakter.', 'warning');
       return;
     }
 
-    adminLoading(true);
-    try {
-      await apiFetch('/api/admin/web/config', { method: 'PATCH', body: payload });
-      adminToast('Konfigurasi tersimpan (' + Object.keys(payload).length + ' field)', 'success');
-      await loadConfig();
-    } catch (err) {
-      adminToast(err.message, 'error');
-    } finally {
-      adminLoading(false);
+    hideQuickReplies();
+    isBusy = true;
+    setInputDisabled(true);
+
+    var startTime = nowMs();
+
+    appendUserMessage(clean);
+    chatHistory.push({ role: 'user', content: clean });
+
+    var inputEl = $('ai-input');
+    if (inputEl) {
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+      updateCharCount();
     }
-  }
 
-  async function loadVisitors() {
-    const wrap = $('visitors-tbody');
-    if (wrap) wrap.innerHTML = '<div class="admin-skeleton h-16 w-full rounded-xl mb-3"></div><div class="admin-skeleton h-16 w-full rounded-xl"></div>';
+    showTypingIndicator();
 
     try {
-      const res = await apiFetch('/api/admin/web/visitors?limit=100');
-      const visitors = res?.data?.visitors || [];
-      state.visitors = visitors;
+      var streamResult = await streamFromBackend(clean, startTime);
 
-      if (!visitors.length) {
-        wrap.innerHTML = '<div class="p-8 text-center text-xs text-slate-400">Belum ada visitor.</div>';
-        return;
+      if (streamResult.type === 'json') {
+        removeTypingIndicator();
+        appendBotMessage(streamResult.reply, streamResult.buttons, streamResult.durationMs, startTime);
+        chatHistory.push({ role: 'assistant', content: streamResult.reply });
+      } else {
+        var consumed = await consumeStream(streamResult);
+        if (consumed.text) {
+          chatHistory.push({ role: 'assistant', content: consumed.text });
+        }
       }
-
-      wrap.innerHTML = visitors.map(v => {
-        let statusBadge = '<span class="admin-badge admin-badge-green">Normal</span>';
-        if (v.banned) statusBadge = '<span class="admin-badge admin-badge-red">Banned</span>';
-        else if (v.is_whitelist) statusBadge = '<span class="admin-badge admin-badge-amber">Whitelist</span>';
-
-        return `
-          <div class="admin-data-row" style="align-items:flex-start;">
-            <div style="display:flex; flex-direction:column; gap:4px; min-width:0;">
-              <p class="font-mono text-sm font-bold text-slate-900">${esc(v.ip)}</p>
-              <p class="text-[10px] text-slate-500 font-mono truncate max-w-[200px]">FP: ${esc((v.fingerprint || '-').slice(0, 16))}</p>
-              <div class="flex items-center gap-2 mt-1">
-                ${statusBadge}
-                <span class="text-[11px] text-slate-500">${fmtNum(v.mailbox_count_today || 0)} / ${fmtNum(v.mailbox_count_total || 0)} mailbox</span>
-              </div>
-            </div>
-            <div class="flex flex-col items-end gap-2 shrink-0 mt-3 sm:mt-0">
-              <p class="text-[10px] text-slate-400 mb-1">Terakhir: ${esc(fmtRel(v.last_mailbox_at || v.updated_at))}</p>
-              <div class="flex gap-2">
-                ${v.banned
-                  ? `<button onclick="submitUnblockIp('${esc(v.ip)}')" class="admin-btn-secondary" style="padding:6px 10px; font-size:11px; color:#059669;">Unblock</button>`
-                  : `<button onclick="submitBlockIpDirect('${esc(v.ip)}')" class="admin-btn-secondary" style="padding:6px 10px; font-size:11px; color:#b91c1c;">Block</button>`}
-                <button onclick="submitToggleWhitelist('${esc(v.ip)}',${v.is_whitelist ? 0 : 1})" class="admin-btn-secondary" style="padding:6px 10px; font-size:11px;">
-                  ${v.is_whitelist ? 'Unwhitelist' : 'Whitelist'}
-                </button>
-              </div>
-            </div>
-          </div>`;
-      }).join('');
     } catch (err) {
-      wrap.innerHTML = `<div class="p-8 text-center text-xs text-red-500">${esc(err.message)}</div>`;
-    }
-  }
-
-  function openBlockIpModal() {
-    if ($('modal-ip-value')) $('modal-ip-value').value = '';
-    if ($('modal-ip-reason')) $('modal-ip-reason').value = '';
-    if ($('modal-ip-duration')) $('modal-ip-duration').value = '1440';
-    openModal('modal-block-ip');
-  }
-
-  async function submitBlockIp() {
-    const ip = ($('modal-ip-value')?.value || '').trim();
-    const reason = ($('modal-ip-reason')?.value || '').trim() || 'Diblokir oleh admin';
-    const duration = parseInt($('modal-ip-duration')?.value || '1440');
-
-    if (!ip) {
-      adminToast('IP wajib diisi', 'error');
-      return;
-    }
-
-    adminLoading(true);
-    try {
-      await apiFetch('/api/admin/web/visitors/block', { method: 'POST', body: { ip, reason, duration_minutes: duration } });
-      adminToast('IP ' + ip + ' diblokir', 'success');
-      closeModal('modal-block-ip');
-      loadVisitors();
-    } catch (err) {
-      adminToast(err.message, 'error');
+      removeTypingIndicator();
+      var msg = err.message || 'Gagal menghubungi Sigit AI.';
+      if (err.status === 429) {
+        msg = 'Terlalu banyak pesan. Tunggu 1 menit lagi ya.';
+      } else if (err.status === 503) {
+        msg = 'Sigit AI sedang tidak tersedia. Coba lagi nanti atau hubungi @sigitchan.';
+      }
+      appendErrorMessage(msg);
     } finally {
-      adminLoading(false);
+      isBusy = false;
+      setInputDisabled(false);
+      var inputFocus = $('ai-input');
+      if (inputFocus && isOpen) inputFocus.focus();
+      scrollToBottom();
     }
   }
 
-  async function submitBlockIpDirect(ip) {
-    if (!confirm('Block IP ' + ip + ' permanent?')) return;
-    adminLoading(true);
-    try {
-      await apiFetch('/api/admin/web/visitors/block', { method: 'POST', body: { ip, reason: 'Blocked by admin', duration_minutes: 0 } });
-      adminToast('IP diblokir', 'success');
-      loadVisitors();
-    } catch (err) {
-      adminToast(err.message, 'error');
-    } finally {
-      adminLoading(false);
+  function setInputDisabled(disabled) {
+    var input = $('ai-input');
+    var btn = $('ai-send-btn');
+    if (input) input.disabled = disabled;
+    if (btn) btn.disabled = disabled;
+
+    var quickBtns = document.querySelectorAll('.ai-quick-btn, .ai-inline-btn');
+    for (var i = 0; i < quickBtns.length; i++) {
+      quickBtns[i].disabled = disabled;
     }
   }
 
-  async function submitUnblockIp(ip) {
-    adminLoading(true);
-    try {
-      await apiFetch('/api/admin/web/visitors/unblock', { method: 'POST', body: { ip } });
-      adminToast('IP di-unblock', 'success');
-      loadVisitors();
-    } catch (err) {
-      adminToast(err.message, 'error');
-    } finally {
-      adminLoading(false);
-    }
+  function updateCharCount() {
+    var input = $('ai-input');
+    var count = $('ai-char-count');
+    if (!input || !count) return;
+    var len = input.value.length;
+    count.textContent = len + '/' + MAX_INPUT;
+    count.classList.remove('warn', 'danger');
+    if (len >= MAX_INPUT) count.classList.add('danger');
+    else if (len >= MAX_INPUT - 30) count.classList.add('warn');
   }
 
-  async function submitToggleWhitelist(ip, enabled) {
-    adminLoading(true);
-    try {
-      await apiFetch('/api/admin/web/visitors/whitelist', { method: 'POST', body: { ip, enabled: !!enabled } });
-      adminToast('Whitelist diupdate', 'success');
-      loadVisitors();
-    } catch (err) {
-      adminToast(err.message, 'error');
-    } finally {
-      adminLoading(false);
-    }
+  function startPlaceholderAnimation() {
+    var input = $('ai-input');
+    if (!input) return;
+    if (placeholderTimer) clearInterval(placeholderTimer);
+    placeholderIdx = 0;
+    input.placeholder = PLACEHOLDERS[0];
+    placeholderTimer = setInterval(function () {
+      placeholderIdx = (placeholderIdx + 1) % PLACEHOLDERS.length;
+      if (!input.value) input.placeholder = PLACEHOLDERS[placeholderIdx];
+    }, 700);
   }
 
-  async function adminLogout() {
-    adminLoading(true);
-    try {
-      await apiFetch('/api/web/auth/logout', { method: 'POST', skipAuthRedirect: true });
-    } catch (e) {}
-    clearToken();
-    window.location.replace('login.html');
+  function showWelcome() {
+    if (hasWelcomed) return;
+    hasWelcomed = true;
+
+    var displayName = 'Teman';
+    if (window.Dashboard && Dashboard.user && Dashboard.user.display_name) {
+      displayName = Dashboard.user.display_name.split(' ')[0];
+    }
+
+    var welcome = 'Halo **' + displayName + '**! 👋 Aku **Sigit AI**, asisten platform Sigit TempMail. Aku bisa bantu soal **TempMail**, **Subdomain**, **Poin**, dan **Akun**. Mau mulai dari mana?';
+    var buttons = ['Cara bikin mailbox', 'Cara bikin subdomain', 'Cara topup poin'];
+
+    appendBotMessage(welcome, buttons, 0);
+    showQuickReplies(buttons);
+  }
+
+  function openPanel() {
+    var panel = $('ai-panel');
+    var launcher = $('ai-launcher');
+    if (!panel || !launcher) return;
+    panel.classList.add('is-open');
+    launcher.classList.add('is-open');
+    isOpen = true;
+    scrollToBottom();
+    setTimeout(function () {
+      if (!hasWelcomed) showWelcome();
+      var input = $('ai-input');
+      if (input) input.focus();
+    }, 250);
+  }
+
+  function closePanel() {
+    var panel = $('ai-panel');
+    var launcher = $('ai-launcher');
+    if (!panel || !launcher) return;
+    panel.classList.remove('is-open');
+    launcher.classList.remove('is-open');
+    isOpen = false;
+  }
+
+  function togglePanel() {
+    if (isOpen) closePanel();
+    else openPanel();
   }
 
   function bindEvents() {
-    const userFilter = $('user-filter');
-    if (userFilter) userFilter.addEventListener('change', filterUsers);
+    var launcher = $('ai-launcher');
+    var closeBtn = $('ai-close-btn');
+    var form = $('ai-input-form');
+    var input = $('ai-input');
 
-    const searchInput = $('user-search');
-    if (searchInput) {
-      let debounce;
-      searchInput.addEventListener('input', () => {
-        clearTimeout(debounce);
-        debounce = setTimeout(searchUsers, 350);
+    if (launcher) launcher.addEventListener('click', togglePanel);
+    if (closeBtn) closeBtn.addEventListener('click', closePanel);
+
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        sendMessage(input ? input.value : '');
       });
     }
 
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') {
-        closeModal('modal-user-detail');
-        closeModal('modal-user-points');
-        closeModal('modal-user-ban');
-        closeModal('modal-block-ip');
-        closeModal('modal-add-domain');
-      }
+    if (input) {
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage(input.value);
+        }
+      });
+
+      input.addEventListener('input', function () {
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 100) + 'px';
+        updateCharCount();
+      });
+    }
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && isOpen) closePanel();
     });
   }
 
-  async function init() {
-    if (!isLoggedIn()) {
-      window.location.replace('login.html');
-      return;
-    }
-    if (window.lucide) window.lucide.createIcons();
+  function init() {
     bindEvents();
+    startPlaceholderAnimation();
 
-    const ok = await guardRole();
-    if (!ok) return;
-
-    await loadOverview();
-    if (state.initialized) return;
-    state.initialized = true;
+    if (window.lucide) window.lucide.createIcons();
   }
 
-  window.adminSwitchView = adminSwitchView;
-  window.toggleAdminSidebar = toggleAdminSidebar;
-  window.adminLogout = adminLogout;
-  window.loadOverview = loadOverview;
-  window.loadUsers = loadUsers;
-  window.changeUsersPage = changeUsersPage;
-  window.filterUsers = filterUsers;
-  window.searchUsers = searchUsers;
-  window.openUserDetail = openUserDetail;
-  window.submitUserRoleTier = submitUserRoleTier;
-  window.openUserPointsModal = openUserPointsModal;
-  window.submitUserPoints = submitUserPoints;
-  window.openBanModal = openBanModal;
-  window.submitUserBan = submitUserBan;
-  window.submitUserUnban = submitUserUnban;
-  window.submitDeleteUser = submitDeleteUser;
-  window.loadPointsLedger = loadPointsLedger;
-  window.loadDomains = loadDomains;
-  window.openAddDomainModal = openAddDomainModal;
-  window.submitAddDomain = submitAddDomain;
-  window.setDefaultDomain = setDefaultDomain;
-  window.deleteDomain = deleteDomain;
-  window.toggleDomainRouting = toggleDomainRouting;
-  window.loadConfig = loadConfig;
-  window.saveConfig = saveConfig;
-  window.switchConfigTab = switchConfigTab;
-  window.toggleSecretVisibility = toggleSecretVisibility;
-  window.clearSecretField = clearSecretField;
-  window.testApiKey = testApiKey;
-  window.loadVisitors = loadVisitors;
-  window.openBlockIpModal = openBlockIpModal;
-  window.submitBlockIp = submitBlockIp;
-  window.submitBlockIpDirect = submitBlockIpDirect;
-  window.submitUnblockIp = submitUnblockIp;
-  window.submitToggleWhitelist = submitToggleWhitelist;
-  window.closeModal = closeModal;
-  window.adminToast = adminToast;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 
-  document.addEventListener('DOMContentLoaded', init);
+  window.SigitAI = {
+    open: openPanel,
+    close: closePanel,
+    toggle: togglePanel,
+    send: sendMessage,
+    reset: function () {
+      chatHistory = [];
+      hasWelcomed = false;
+      var el = $('ai-messages');
+      if (el) el.innerHTML = '';
+    }
+  };
 })();
