@@ -118,7 +118,10 @@
 
   function updateTypingIndicator(text) {
     var el = $('ai-typing-bubble');
-    if (!el) return;
+    if (!el) {
+      showTypingIndicator();
+      el = $('ai-typing-bubble');
+    }
     var bubble = el.querySelector('.ai-msg-bubble');
     if (bubble) {
       bubble.innerHTML = '<div style="display:flex;align-items:center;gap:8px;"><div style="width:12px;height:12px;border:2px solid #cbd5e1;border-top-color:#1a73e8;border-radius:50%;animation:spin 0.8s linear infinite;"></div><span class="ai-status-text" style="font-size:12px;color:#64748b;font-weight:500;">' + text + '</span></div>';
@@ -321,6 +324,7 @@
     var fullText = '';
     var typingQueue = "";
     var isTyping = false;
+    var hasTextStarted = false;
 
     removeTypingIndicator();
     var created = createBubble('bot');
@@ -356,10 +360,16 @@
           var chunk = parseSseChunk(line);
           if (chunk) {
             if (chunk.type === 'status') {
-              updateTypingIndicator(chunk.text);
+              if (!hasTextStarted) {
+                updateTypingIndicator(chunk.text);
+              }
             } else if (chunk.type === 'error') {
               appendErrorMessage(chunk.error);
             } else if (chunk.type === 'content') {
+              if (!hasTextStarted) {
+                hasTextStarted = true;
+                removeTypingIndicator();
+              }
               typingQueue += chunk.text;
               if (!isTyping) {
                 isTyping = true;
@@ -373,6 +383,7 @@
       if (buffer.trim()) {
         var finalChunk = parseSseChunk(buffer.trim());
         if (finalChunk && finalChunk.type === 'content') {
+           if (!hasTextStarted) { hasTextStarted = true; removeTypingIndicator(); }
            typingQueue += finalChunk.text;
            if (!isTyping) { isTyping = true; typeWriter(); }
         }
