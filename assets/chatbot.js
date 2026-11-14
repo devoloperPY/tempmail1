@@ -37,39 +37,73 @@
     return out;
   }
 
+  // FUNGSI BARU: Menyedot URL dari teks biasa dan mengubahnya jadi tombol
+  function autoExtractUrls(text) {
+    var buttons = [];
+    // Cari URL http/https ATAU link telegram (yang mungkin tanpa https://)
+    var urlRegex = /(https?:\/\/[^\s]+|t\.me\/[^\s]+)/gi;
+    var match;
+    
+    // Looping semua URL yang ada di teks
+    while ((match = urlRegex.exec(text)) !== null) {
+      var rawUrl = match[0];
+      var finalUrl = rawUrl;
+      if (!finalUrl.startsWith('http')) finalUrl = 'https://' + finalUrl;
+      
+      var label = 'Buka Link';
+      if (finalUrl.includes('t.me')) label = 'Hubungi Owner';
+      else if (finalUrl.includes('dashboard.html')) label = 'Buka Halaman';
+
+      buttons.push(label + ' (' + finalUrl + ')');
+      // Hapus URL dari teks aslinya
+      text = text.replace(rawUrl, '');
+    }
+    return { clean: text.trim(), buttons: buttons };
+  }
+
   function extractButtons(text) {
     if (!text) return { clean: '', buttons: [] };
+    
+    // 1. Cek apakah ada marker [BUTTONS: ...] dari AI
     var m = text.match(/\[BUTTONS:\s*([^\]]+)\]/i);
-    if (!m) return { clean: text, buttons: [] };
+    var clean = text;
+    var buttons = [];
 
-    var raw = m[1];
-    var clean = text.replace(m[0], '').trim();
-
-    var hasUrlInside = /https?:\/\/|\(\s*\//.test(raw);
-    if (!hasUrlInside) {
-      var after = text.slice(text.indexOf(m[0]) + m[0].length);
-      var urlMatch = after.match(/\(\s*(https?:\/\/[^\s)]+|\/[^\s)]+)\s*\)/);
-      if (urlMatch) {
-        raw = raw.trim() + ' (' + urlMatch[1] + ')';
-        clean = clean.replace(urlMatch[0], '').trim();
+    if (m) {
+      var raw = m[1];
+      var hasUrlInside = /https?:\/\/|\(\s*\//.test(raw);
+      if (!hasUrlInside) {
+        var after = text.slice(text.indexOf(m[0]) + m[0].length);
+        var urlMatch = after.match(/\(\s*(https?:\/\/[^\s)]+|\/[^\s)]+)\s*\)/);
+        if (urlMatch) {
+          raw = raw.trim() + ' (' + urlMatch[1] + ')';
+        }
       }
+      buttons = raw.split('|').map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 3);
+      clean = text.replace(m[0], '').trim();
     }
 
-    var parts = raw.split('|').map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 3);
-    return { clean: clean, buttons: parts };
+    // 2. Cek apakah ada URL mentah yang "tumpah" di teks (seperti kasus di gambar)
+    var auto = autoExtractUrls(clean);
+    clean = auto.clean;
+    
+    // Gabungkan tombol dari marker AI dengan tombol dari URL yang tumpah
+    buttons = buttons.concat(auto.buttons);
+
+    // Buang duplikat dan batasi max 3 tombol
+    buttons = [...new Set(buttons)].slice(0, 3);
+
+    return { clean: clean, buttons: buttons };
   }
 
   function extractUrlFromText(text) {
     if (!text) return null;
-
+    
     var m = text.match(/\(([^()]*?(?:https?:\/\/|\/)[^()]*)\)/);
     if (m && m[1]) return m[1].trim();
 
     var m2 = text.match(/(https?:\/\/[^\s)]+)/);
     if (m2) return m2[1];
-
-    var m3 = text.match(/(^|\s)(\/[a-zA-Z0-9_\-./#?=&%]+)/);
-    if (m3) return m3[2];
 
     var lower = text.toLowerCase();
     if (lower.includes('telegram')) return 'https://t.me/sigitchan';
@@ -201,6 +235,8 @@
     var now = Date.now();
     var parsed = extractButtons(text);
     var b = createBubble('bot');
+    
+    // Tampilkan teks yang sudah bersih (tanpa URL panjang)
     b.bubble.innerHTML = formatMarkdown(parsed.clean);
 
     var metaText = formatTimestamp(now);
@@ -360,10 +396,18 @@
         typingQueue = typingQueue.substring(2);
         
         fullText += chunk;
+        
+        // Selama ngetik, kita panggil extractButtons agar URL langsung hilang dari layar
+        // dan tombol langsung muncul (jika formatnya sudah valid di tengah jalan)
         var parsed = extractButtons(fullText);
         created.bubble.innerHTML = formatMarkdown(parsed.clean);
-        scrollToBottom();
         
+        // Render tombol secara live jika sudah terdeteksi
+        if (parsed.buttons && parsed.buttons.length > 0) {
+          renderInlineButtons(created.body, parsed.buttons, false);
+        }
+
+        scrollToBottom();
         setTimeout(typeWriter, 15);
       } else {
         isTyping = false;
@@ -428,6 +472,7 @@
       dur.textContent = '⏱ ' + formatDuration(duration);
       created.meta.appendChild(dur);
 
+      // Final render untuk memastikan tombol terpasang sempurna
       if (parsedEnd.buttons && parsedEnd.buttons.length > 0) {
         renderInlineButtons(created.body, parsedEnd.buttons, false);
       }
