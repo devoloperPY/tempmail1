@@ -124,7 +124,9 @@
     }
     var bubble = el.querySelector('.ai-msg-bubble');
     if (bubble) {
-      bubble.innerHTML = '<div style="display:flex;align-items:center;gap:8px;"><div style="width:12px;height:12px;border:2px solid #cbd5e1;border-top-color:#1a73e8;border-radius:50%;animation:spin 0.8s linear infinite;"></div><span class="ai-status-text" style="font-size:12px;color:#64748b;font-weight:500;">' + text + '</span></div>';
+      var animStyle = 'display:inline-block; animation: bounceText 1.2s infinite;';
+      var spinStyle = 'width:12px; height:12px; border:2px solid #cbd5e1; border-top-color:#1a73e8; border-radius:50%; animation: spin 0.8s linear infinite; display:inline-block;';
+      bubble.innerHTML = '<div style="display:flex; align-items:center; gap:8px;"><div style="' + spinStyle + '"></div><span class="ai-status-text" style="font-size:12px; color:#64748b; font-weight:500; ' + animStyle + '">' + text + '</span></div>';
     }
   }
 
@@ -159,8 +161,13 @@
       btn.addEventListener('click', function () {
         if (isBusy) return;
         if (urlTarget) {
-          if (urlTarget.startsWith('/')) {
-            window.location.href = urlTarget;
+          if (urlTarget.startsWith('/') || urlTarget.startsWith('#')) {
+            if (window.Dashboard && window.Dashboard.switchView) {
+              var viewName = urlTarget.replace('/dashboard.html#', '').replace('#', '');
+              window.Dashboard.switchView(viewName);
+            } else {
+              window.location.href = urlTarget;
+            }
           } else {
             window.open(urlTarget, '_blank', 'noopener');
           }
