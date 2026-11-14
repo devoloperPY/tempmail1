@@ -49,15 +49,18 @@
   }
 
   function extractUrlFromText(text) {
-    var urlMatch = text.match(/(https?:\/\/[^\s\)]+|\/[^\s\)]+)/);
-    if (urlMatch) return urlMatch[1];
-    return null;
-  }
+    var match = text.match(/\((https?:\/\/[^\)]+|\/[^\)]+)\)/);
+    if (match && match[1]) return match[1];
+    
+    match = text.match(/(https?:\/\/[^\s]+|\/[^\s]+)/);
+    if (match && match[1]) return match[1];
 
-  function getButtonDisplayText(text) {
-    var match = text.match(/^(.+?)\s*[\(\[]/);
-    if (match) return match[1].trim();
-    return text;
+    var lower = text.toLowerCase();
+    if (lower.includes('telegram')) return 'https://t.me/sigitchan';
+    if (lower.includes('tiktok')) return 'https://tiktok.com/@sigitchan';
+    if (lower.includes('instagram')) return 'https://instagram.com/sigitchan';
+    
+    return null;
   }
 
   function avatarBotSvg() {
@@ -147,7 +150,10 @@
       btn.className = 'ai-inline-btn';
       
       var urlTarget = extractUrlFromText(text);
-      var displayText = getButtonDisplayText(text);
+      var displayText = text;
+      
+      var bracketMatch = text.match(/^(.+?)\s*\((https?:\/\/[^\)]+|\/[^\)]+)\)$/);
+      if (bracketMatch) displayText = bracketMatch[1];
 
       btn.textContent = displayText;
       if (disabled) btn.disabled = true;
