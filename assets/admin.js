@@ -22,6 +22,15 @@
   const ROLE_ALLOWED = ['admin', 'owner'];
   const SECRET_KEYS = ['ai_provider1_api_key', 'ai_provider2_api_key'];
 
+  const AI_TEMPLATES = {
+    ai_provider1_api_url: 'https://9router.sigitc.my.id/v1/chat/completions',
+    ai_provider1_model: 'nvidia/nvidia/nemotron-3-ultra-550b-a55b',
+    ai_provider2_api_url: 'https://integrate.api.nvidia.com/v1/chat/completions',
+    ai_provider2_model: 'nvidia/nemotron-3-ultra-550b-a55b',
+    ai_max_input_length: '200',
+    ai_rate_limit_per_minute: '10'
+  };
+
   function $(id) { return document.getElementById(id); }
   function $all(sel) { return document.querySelectorAll(sel); }
 
@@ -831,8 +840,11 @@
             <span class="config-unit">${esc(c.unit)}</span>
           </div>
           <div style="position: relative;">
-            <input type="password" data-config-key="${esc(c.key)}" data-config-type="secret" value="${esc(val)}" class="admin-field-input" style="padding-right: 80px; font-family: 'JetBrains Mono', monospace; font-size: 12px;" autocomplete="off" spellcheck="false" />
+            <input type="password" data-config-key="${esc(c.key)}" data-config-type="secret" value="${esc(val)}" class="admin-field-input" style="padding-right: 120px; font-family: 'JetBrains Mono', monospace; font-size: 12px;" autocomplete="off" spellcheck="false" />
             <div style="position: absolute; top: 50%; right: 6px; transform: translateY(-50%); display: flex; gap: 4px;">
+              <button type="button" onclick="testApiKey(this)" style="height: 28px; padding: 0 10px; border-radius: 6px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700;" title="Cek Validitas">
+                Cek
+              </button>
               <button type="button" onclick="toggleSecretVisibility(this)" style="width: 28px; height: 28px; border-radius: 6px; background: #f1f5f9; border: 1px solid #e2e8f0; color: #475569; cursor: pointer; display: flex; align-items: center; justify-content: center;" title="Tampilkan/Sembunyikan">
                 <i data-lucide="eye" style="width: 14px; height: 14px;"></i>
               </button>
@@ -845,13 +857,22 @@
         </div>`;
     }
 
+    const template = AI_TEMPLATES[c.key] || '';
+    let displayVal = val;
+    let isPlaceholder = false;
+
+    if (!displayVal && template) {
+      displayVal = template;
+      isPlaceholder = true;
+    }
+
     return `
       <div class="config-field">
         <div class="flex items-center justify-between gap-2 mb-2">
           <label class="admin-field-label mb-0">${esc(c.label)}</label>
           <span class="config-unit">${esc(c.unit)}</span>
         </div>
-        <input type="text" data-config-key="${esc(c.key)}" data-config-type="text" value="${esc(val)}" class="admin-field-input" />
+        <input type="text" data-config-key="${esc(c.key)}" data-config-type="text" value="${esc(displayVal)}" class="admin-field-input" data-is-template="${isPlaceholder ? '1' : '0'}" style="${isPlaceholder ? 'color: #94a3b8; font-style: italic;' : ''}" />
       </div>`;
   }
 
@@ -882,6 +903,14 @@
       });
     });
 
+    panel.querySelectorAll('input[data-is-template="1"]').forEach(inp => {
+      inp.addEventListener('input', function () {
+        this.style.color = '';
+        this.style.fontStyle = '';
+        this.setAttribute('data-is-template', '0');
+      });
+    });
+
     if (window.lucide) window.lucide.createIcons();
   }
 
@@ -908,6 +937,39 @@
     input.value = '';
     input.focus();
     adminToast('Field dikosongkan. Klik Simpan untuk apply.', 'warning');
+  }
+
+  async function testApiKey(btn) {
+    const wrap = btn.closest('div').parentElement;
+    const input = wrap.querySelector('input[data-config-type="secret"]');
+    if (!input) return;
+    
+    const key = input.value.trim();
+    const fieldWrap = btn.closest('.config-field');
+    const urlInput = fieldWrap.querySelector('input[data-config-key$="_api_url"]');
+    const modelInput = fieldWrap.querySelector('input[data-config-key$="_model"]');
+
+    if (!key) {
+      adminToast('API Key masih kosong', 'warning');
+      return;
+    }
+
+    adminLoading(true);
+    try {
+      const res = await apiFetch('/api/admin/web/ai-test', {
+        method: 'POST',
+        body: {
+          api_key: key,
+          api_url: urlInput ? urlInput.value.trim() : '',
+          model: modelInput ? modelInput.value.trim() : ''
+        }
+      });
+      adminToast(res.message || 'API Key valid dan dapat terhubung!', 'success');
+    } catch (err) {
+      adminToast(err.message || 'Gagal terkoneksi ke AI', 'error');
+    } finally {
+      adminLoading(false);
+    }
   }
 
   function switchConfigTab(name) {
@@ -961,6 +1023,9 @@
         val = inp.checked ? '1' : '0';
       } else {
         val = inp.value.trim();
+        if (inp.getAttribute('data-is-template') === '1') {
+          val = '';
+        }
       }
 
       if (state.configs[key] !== val) {
@@ -1200,6 +1265,7 @@
   window.switchConfigTab = switchConfigTab;
   window.toggleSecretVisibility = toggleSecretVisibility;
   window.clearSecretField = clearSecretField;
+  window.testApiKey = testApiKey;
   window.loadVisitors = loadVisitors;
   window.openBlockIpModal = openBlockIpModal;
   window.submitBlockIp = submitBlockIp;
