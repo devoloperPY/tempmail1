@@ -42,24 +42,39 @@
     var m = text.match(/\[BUTTONS:\s*([^\]]+)\]/i);
     if (!m) return { clean: text, buttons: [] };
 
-    var parts = m[1].split('|').map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 3);
+    var raw = m[1];
     var clean = text.replace(m[0], '').trim();
 
+    var hasUrlInside = /https?:\/\/|\(\s*\//.test(raw);
+    if (!hasUrlInside) {
+      var after = text.slice(text.indexOf(m[0]) + m[0].length);
+      var urlMatch = after.match(/\(\s*(https?:\/\/[^\s)]+|\/[^\s)]+)\s*\)/);
+      if (urlMatch) {
+        raw = raw.trim() + ' (' + urlMatch[1] + ')';
+        clean = clean.replace(urlMatch[0], '').trim();
+      }
+    }
+
+    var parts = raw.split('|').map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 3);
     return { clean: clean, buttons: parts };
   }
 
   function extractUrlFromText(text) {
-    var match = text.match(/\((https?:\/\/[^\)]+|\/[^\)]+)\)/);
-    if (match && match[1]) return match[1];
-    
-    match = text.match(/(https?:\/\/[^\s]+|\/[^\s]+)/);
-    if (match && match[1]) return match[1];
+    if (!text) return null;
+
+    var m = text.match(/\(([^()]*?(?:https?:\/\/|\/)[^()]*)\)/);
+    if (m && m[1]) return m[1].trim();
+
+    var m2 = text.match(/(https?:\/\/[^\s)]+)/);
+    if (m2) return m2[1];
+
+    var m3 = text.match(/(^|\s)(\/[a-zA-Z0-9_\-./#?=&%]+)/);
+    if (m3) return m3[2];
 
     var lower = text.toLowerCase();
     if (lower.includes('telegram')) return 'https://t.me/sigitchan';
     if (lower.includes('tiktok')) return 'https://tiktok.com/@sigitchan';
     if (lower.includes('instagram')) return 'https://instagram.com/sigitchan';
-    
     return null;
   }
 
@@ -101,7 +116,7 @@
     var container = $('ai-messages');
     if (container) container.appendChild(wrap);
 
-    return { wrap: wrap, bubble: bubble, meta: meta };
+    return { wrap: wrap, body: body, bubble: bubble, meta: meta };
   }
 
   function showTypingIndicator() {
@@ -150,8 +165,8 @@
       var urlTarget = extractUrlFromText(text);
       var displayText = text;
       
-      var bracketMatch = text.match(/^(.+?)\s*\((https?:\/\/[^\)]+|\/[^\)]+)\)$/);
-      if (bracketMatch) displayText = bracketMatch[1];
+      var bracketMatch = text.match(/^(.+?)\s*\(([^()]*?(?:https?:\/\/|\/)[^()]*)\)\s*$/);
+      if (bracketMatch) displayText = bracketMatch[1].trim();
 
       btn.textContent = displayText;
       if (disabled) btn.disabled = true;
@@ -201,7 +216,7 @@
 
     var allButtons = (buttons && buttons.length > 0) ? buttons : parsed.buttons;
     if (allButtons && allButtons.length > 0) {
-      renderInlineButtons(b.body || b.meta.parentElement, allButtons, false);
+      renderInlineButtons(b.body, allButtons, false);
     }
 
     scrollToBottom();
@@ -326,7 +341,7 @@
     var decoder = new TextDecoder('utf-8');
     var buffer = '';
     var fullText = '';
-    var typingQueue = "";
+    var typingQueue = '';
     var isTyping = false;
     var isBubbleCreated = false;
     var created = null;
@@ -390,12 +405,12 @@
       if (buffer.trim()) {
         var finalChunk = parseSseChunk(buffer.trim());
         if (finalChunk && finalChunk.type === 'content') {
-           typingQueue += finalChunk.text;
-           if (!isTyping) { isTyping = true; typeWriter(); }
+          typingQueue += finalChunk.text;
+          if (!isTyping) { isTyping = true; typeWriter(); }
         }
       }
       
-      while (typingQueue.length > 0) {
+      while (typingQueue.length > 0 || isTyping) {
         await new Promise(r => setTimeout(r, 30));
       }
       
@@ -414,7 +429,7 @@
       created.meta.appendChild(dur);
 
       if (parsedEnd.buttons && parsedEnd.buttons.length > 0) {
-        renderInlineButtons(created.bubble.parentElement, parsedEnd.buttons, false);
+        renderInlineButtons(created.body, parsedEnd.buttons, false);
       }
     }
 
