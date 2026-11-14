@@ -2,7 +2,7 @@
   'use strict';
 
   var MAX_INPUT = 200;
-  var MAX_HISTORY_SEND = 10;
+  var MAX_HISTORY_SEND = 50;
   var PLACEHOLDERS = ['Butuh bantuan?', 'Butuh bantuan..', 'Butuh bantuan...', 'Butuh bantuan..'];
   var placeholderIdx = 0;
   var placeholderTimer = null;
@@ -110,10 +110,19 @@
     wrap.id = 'ai-typing-bubble';
     wrap.innerHTML =
       '<div class="ai-msg-avatar">' + avatarBotSvg() + '</div>' +
-      '<div class="ai-msg-body"><div class="ai-msg-bubble"><div class="ai-typing"><span></span><span></span><span></span></div></div></div>';
+      '<div class="ai-msg-body"><div class="ai-msg-bubble" style="display:flex;align-items:center;gap:8px;"><div class="ai-typing"><span></span><span></span><span></span></div></div></div>';
     var container = $('ai-messages');
     if (container) container.appendChild(wrap);
     scrollToBottom();
+  }
+
+  function updateTypingIndicator(text) {
+    var el = $('ai-typing-bubble');
+    if (!el) return;
+    var bubble = el.querySelector('.ai-msg-bubble');
+    if (bubble) {
+      bubble.innerHTML = '<div style="display:flex;align-items:center;gap:8px;"><div style="width:12px;height:12px;border:2px solid #cbd5e1;border-top-color:#1a73e8;border-radius:50%;animation:spin 0.8s linear infinite;"></div><span class="ai-status-text" style="font-size:12px;color:#64748b;font-weight:500;">' + text + '</span></div>';
+    }
   }
 
   function removeTypingIndicator() {
@@ -235,10 +244,13 @@
     if (!payload || payload === '[DONE]') return null;
     try {
       var obj = JSON.parse(payload);
+      if (obj.type === 'status') return obj;
+      if (obj.type === 'error') return obj;
+      
       var choice = obj && obj.choices && obj.choices[0];
       if (!choice) return null;
       var delta = choice.delta || choice.message;
-      if (delta && typeof delta.content === 'string') return delta.content;
+      if (delta && typeof delta.content === 'string') return { type: 'content', text: delta.content };
       return null;
     } catch (e) {
       return null;
@@ -307,7 +319,6 @@
     var decoder = new TextDecoder('utf-8');
     var buffer = '';
     var fullText = '';
-    
     var typingQueue = "";
     var isTyping = false;
 
@@ -344,10 +355,16 @@
           var line = lines[i].trim();
           var chunk = parseSseChunk(line);
           if (chunk) {
-            typingQueue += chunk;
-            if (!isTyping) {
-              isTyping = true;
-              typeWriter();
+            if (chunk.type === 'status') {
+              updateTypingIndicator(chunk.text);
+            } else if (chunk.type === 'error') {
+              appendErrorMessage(chunk.error);
+            } else if (chunk.type === 'content') {
+              typingQueue += chunk.text;
+              if (!isTyping) {
+                isTyping = true;
+                typeWriter();
+              }
             }
           }
         }
@@ -355,8 +372,8 @@
 
       if (buffer.trim()) {
         var finalChunk = parseSseChunk(buffer.trim());
-        if (finalChunk) {
-           typingQueue += finalChunk;
+        if (finalChunk && finalChunk.type === 'content') {
+           typingQueue += finalChunk.text;
            if (!isTyping) { isTyping = true; typeWriter(); }
         }
       }
@@ -490,7 +507,7 @@
       displayName = Dashboard.user.display_name.split(' ')[0];
     }
 
-    var welcome = 'Halo **' + displayName + '**! 👋 Aku **Sigit AI**, asisten platform Sigit TempMail. Aku bisa bantu soal **TempMail**, **Subdomain**, **Poin**, dan **Akun**. Mau mulai dari mana?';
+    var welcome = 'Halo **' + displayName + '**! Aku **Sigit AI**, asisten platform Sigit TempMail. Aku bisa bantu soal **TempMail**, **Subdomain**, **Poin**, dan **Akun**. Mau mulai dari mana?';
     var buttons = ['Cara bikin mailbox', 'Cara bikin subdomain', 'Cara topup poin'];
 
     appendBotMessage(welcome, buttons, 0);
