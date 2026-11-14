@@ -33,59 +33,70 @@
       .replace(/>/g, '&gt;');
     out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     out = out.replace(/`([^`]+)`/g, '<code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;font-family:JetBrains Mono,monospace;font-size:11px;">$1</code>');
-    out = out.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:#1a73e8;text-decoration:underline;">$1</a>');
     return out;
-  }
-
-  function autoExtractUrls(text) {
-    var buttons = [];
-    var urlRegex = /(https?:\/\/[^\s]+)/gi;
-    var match;
-    
-    while ((match = urlRegex.exec(text)) !== null) {
-      var rawUrl = match[0];
-      var label = rawUrl.includes('t.me') ? 'Hubungi Owner' : 'Buka Link';
-      buttons.push(label + ' (' + rawUrl + ')');
-      text = text.replace(rawUrl, '');
-    }
-
-    var textParamRegex = /(?:text=)[^\s]+/gi;
-    while ((match = textParamRegex.exec(text)) !== null) {
-      var rawSampah = match[0];
-      var urlTelegram = 'https://t.me/sigitchan?' + rawSampah;
-      buttons.push('Hubungi Owner (' + urlTelegram + ')');
-      text = text.replace(rawSampah, '');
-    }
-
-    return { clean: text.trim(), buttons: buttons };
   }
 
   function extractButtons(text) {
     if (!text) return { clean: '', buttons: [] };
     
-    var m = text.match(/\[BUTTONS:\s*([^\]]+)\]/i);
     var clean = text;
     var buttons = [];
+    var searchKeyword = '[BUTTONS:';
+    var startIndex = clean.toUpperCase().indexOf(searchKeyword);
 
-    if (m) {
-      var raw = m[1];
-      var hasUrlInside = /https?:\/\/|\(\s*\//.test(raw);
-      if (!hasUrlInside) {
-        var after = text.slice(text.indexOf(m[0]) + m[0].length);
-        var urlMatch = after.match(/\(\s*(https?:\/\/[^\s)]+|\/[^\s)]+)\s*\)/);
-        if (urlMatch) {
-          raw = raw.trim() + ' (' + urlMatch[1] + ')';
-        }
+    while (startIndex !== -1) {
+      var openBracketIndex = clean.indexOf('[', startIndex);
+      var closeBracketIndex = clean.indexOf(']', openBracketIndex);
+
+      if (openBracketIndex !== -1 && closeBracketIndex !== -1) {
+        var rawBlock = clean.substring(openBracketIndex + searchKeyword.length, closeBracketIndex).trim();
+        
+        var parts = rawBlock.split('|');
+        parts.forEach(function(part) {
+          part = part.trim();
+          if (!part) return;
+
+          var openParen = part.indexOf('(');
+          var closeParen = part.lastIndexOf(')');
+
+          if (openParen !== -1 && closeParen !== -1 && closeParen > openParen) {
+            var label = part.substring(0, openParen).trim();
+            var url = part.substring(openParen + 1, closeParen).trim();
+            
+            label = label.replace(/^\*+|\*+$/g, '').trim();
+
+            if (url.startsWith('http') || url.startsWith('/')) {
+              buttons.push(label + ' (' + url + ')');
+            }
+          } else {
+            buttons.push(part);
+          }
+        });
+
+        clean = clean.substring(0, openBracketIndex) + clean.substring(closeBracketIndex + 1);
+      } else {
+        break;
       }
-      buttons = raw.split('|').map(function (s) { return s.trim(); }).filter(Boolean).slice(0, 3);
-      clean = text.replace(m[0], '').trim();
+
+      startIndex = clean.toUpperCase().indexOf(searchKeyword);
     }
 
-    var auto = autoExtractUrls(clean);
-    clean = auto.clean;
-    buttons = buttons.concat(auto.buttons);
+    var urlRegex = /(https?:\/\/[^\s\)]+)/gi;
+    var match;
+    while ((match = urlRegex.exec(clean)) !== null) {
+      var rawUrl = match[0];
+      
+      if (clean.indexOf(rawUrl) === -1) continue;
+
+      var urlLabel = rawUrl.includes('t.me') ? 'Hubungi Owner' : 'Buka Link';
+      buttons.push(urlLabel + ' (' + rawUrl + ')');
+      
+      clean = clean.replace(rawUrl, '');
+    }
 
     buttons = [...new Set(buttons)].slice(0, 3);
+    clean = clean.replace(/\n{3,}/g, '\n\n').trim();
+
     return { clean: clean, buttons: buttons };
   }
 
