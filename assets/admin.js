@@ -20,6 +20,7 @@
   };
 
   const ROLE_ALLOWED = ['admin', 'owner'];
+  const SECRET_KEYS = ['ai_provider1_api_key', 'ai_provider2_api_key'];
 
   function $(id) { return document.getElementById(id); }
   function $all(sel) { return document.querySelectorAll(sel); }
@@ -777,10 +778,18 @@
     { key: 'require_login', label: 'Wajib Login', unit: '1/0', group: 'Sistem' },
     { key: 'broadcast_banner', label: 'Broadcast Banner', unit: 'teks', group: 'Sistem' },
 
-    { key: 'ai_enabled', label: 'AI Chatbot Aktif', unit: '1/0', group: 'AI Chatbot' },
-    { key: 'ai_api_key', label: 'API Key 9Router', unit: 'secret', group: 'AI Chatbot' },
-    { key: 'ai_api_url', label: 'API URL', unit: 'url', group: 'AI Chatbot' },
-    { key: 'ai_model', label: 'Model AI', unit: 'teks', group: 'AI Chatbot' }
+    { key: 'ai_provider1_enabled', label: 'Provider 1 (9Router) Aktif', unit: '1/0', group: 'AI Chatbot' },
+    { key: 'ai_provider1_api_key', label: 'Provider 1 API Key', unit: 'secret', group: 'AI Chatbot' },
+    { key: 'ai_provider1_api_url', label: 'Provider 1 API URL', unit: 'url', group: 'AI Chatbot' },
+    { key: 'ai_provider1_model', label: 'Provider 1 Model', unit: 'teks', group: 'AI Chatbot' },
+    
+    { key: 'ai_provider2_enabled', label: 'Provider 2 (NVIDIA) Aktif', unit: '1/0', group: 'AI Chatbot' },
+    { key: 'ai_provider2_api_key', label: 'Provider 2 API Key', unit: 'secret', group: 'AI Chatbot' },
+    { key: 'ai_provider2_api_url', label: 'Provider 2 API URL', unit: 'url', group: 'AI Chatbot' },
+    { key: 'ai_provider2_model', label: 'Provider 2 Model', unit: 'teks', group: 'AI Chatbot' },
+    
+    { key: 'ai_max_input_length', label: 'Maks Input Chat (karakter)', unit: 'char', group: 'AI Chatbot' },
+    { key: 'ai_rate_limit_per_minute', label: 'Limit Pesan / Menit', unit: 'pesan', group: 'AI Chatbot' }
   ];
 
   const CONFIG_GROUP_ICONS = {
@@ -965,7 +974,8 @@
           'mailbox_duration_minutes', 'max_messages_per_mailbox', 'max_concurrent_mailbox',
           'global_max_mailbox_per_day', 'max_accounts_per_ip', 'max_accounts_per_device',
           'free_user_daily_limit', 'free_user_mailbox_duration', 'free_user_max_messages',
-          'premium_user_daily_limit', 'premium_user_mailbox_duration', 'premium_user_max_messages'
+          'premium_user_daily_limit', 'premium_user_mailbox_duration', 'premium_user_max_messages',
+          'ai_max_input_length', 'ai_rate_limit_per_minute'
         ];
 
         if (numKeys.includes(key)) {
