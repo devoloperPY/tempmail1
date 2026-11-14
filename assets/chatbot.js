@@ -42,7 +42,6 @@
     var clean = text;
     var buttons = [];
     
-    // 1. Cari blok [BUTTONS: ... ]
     var keyword = '[BUTTONS:';
     var startIndex = clean.toUpperCase().indexOf(keyword);
 
@@ -50,7 +49,6 @@
       var openIdx = clean.indexOf('[', startIndex);
       var closeIdx = clean.indexOf(']', openIdx + keyword.length);
 
-      // Jika belum ada kurung tutup (masih streaming), biarkan dulu
       if (openIdx === -1 || closeIdx === -1) break;
 
       var content = clean.substring(openIdx + keyword.length, closeIdx).trim();
@@ -69,7 +67,7 @@
           var url = part.substring(openP + 1, closeP).trim();
           if (url.startsWith('http') || url.startsWith('/')) {
             buttons.push(lbl + ' (' + url + ')');
-            part = ''; // Tandai sudah diproses
+            part = '';
           }
         }
         
@@ -81,8 +79,6 @@
       startIndex = clean.toUpperCase().indexOf(keyword);
     }
 
-    // 2. PEMBERSIH URL MENTAH (Jika AI bandel taruh URL di luar kurung)
-    // Cari "http" dan potong sampai spasi terdekat
     var urlStartIdx = clean.indexOf('http');
     while (urlStartIdx !== -1) {
       var urlEndIdx = clean.indexOf(' ', urlStartIdx);
@@ -93,12 +89,10 @@
       var label = rawUrl.includes('t.me') ? 'Hubungi Owner' : 'Buka Link';
       buttons.push(label + ' (' + rawUrl + ')');
       
-      // Hapus URL dari layar
       clean = clean.replace(rawUrl, '');
       urlStartIdx = clean.indexOf('http');
     }
 
-    // 3. PEMBERSIH SISA URL TERPOTONG (Misal: AI nulis 'text=Halo%20Owner...')
     var textEqIdx = clean.indexOf('text=');
     while (textEqIdx !== -1) {
       var endIdx = clean.indexOf(' ', textEqIdx);
@@ -110,8 +104,7 @@
       textEqIdx = clean.indexOf('text=');
     }
 
-    // Bersihkan sisa-sisa kurung atau teks aneh
-    buttons = [...new Set(buttons)].slice(0, 3);
+    buttons = [...new Set(buttons)].slice(0, 4);
     clean = clean.replace(/\n{3,}/g, '\n\n').trim();
 
     return { clean: clean, buttons: buttons };
@@ -231,7 +224,7 @@
             window.open(urlTarget, '_blank', 'noopener');
           }
         } else {
-          sendMessage(text);
+          sendMessage(displayText);
         }
       });
       wrap.appendChild(btn);
