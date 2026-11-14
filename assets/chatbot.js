@@ -11,10 +11,8 @@
   var isBusy = false;
   var isOpen = false;
   var hasWelcomed = false;
-  var sessionId = 0;
 
   function $(id) { return document.getElementById(id); }
-
   function nowMs() { return (window.performance && performance.now) ? performance.now() : Date.now(); }
 
   function formatTimestamp(ms) {
@@ -35,6 +33,7 @@
       .replace(/>/g, '&gt;');
     out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     out = out.replace(/`([^`]+)`/g, '<code style="background:#f1f5f9;padding:1px 5px;border-radius:4px;font-family:JetBrains Mono,monospace;font-size:11px;">$1</code>');
+    out = out.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener" style="color:#1a73e8;text-decoration:underline;">$1</a>');
     return out;
   }
 
@@ -47,6 +46,21 @@
     var clean = text.replace(m[0], '').trim();
 
     return { clean: clean, buttons: parts };
+  }
+
+  function extractUrlFromText(text) {
+    var match = text.match(/\((https?:\/\/[^\)]+)\)/);
+    if (match && match[1]) return match[1];
+    
+    match = text.match(/(https?:\/\/[^\s]+)/);
+    if (match && match[1]) return match[1];
+
+    var lower = text.toLowerCase();
+    if (lower.includes('telegram')) return 'https://t.me/sigitchan';
+    if (lower.includes('tiktok')) return 'https://tiktok.com/@sigitchan';
+    if (lower.includes('instagram')) return 'https://instagram.com/sigitchan';
+    
+    return null;
   }
 
   function avatarBotSvg() {
@@ -120,11 +134,23 @@
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'ai-inline-btn';
-      btn.textContent = text;
+      
+      var urlTarget = extractUrlFromText(text);
+      var displayText = text;
+      
+      var bracketMatch = text.match(/^(.+?)\s*\(https?:\/\/[^\)]+\)$/);
+      if (bracketMatch) displayText = bracketMatch[1];
+
+      btn.textContent = displayText;
       if (disabled) btn.disabled = true;
+
       btn.addEventListener('click', function () {
         if (isBusy) return;
-        sendMessage(text);
+        if (urlTarget) {
+          window.open(urlTarget, '_blank', 'noopener');
+        } else {
+          sendMessage(text);
+        }
       });
       wrap.appendChild(btn);
     });
@@ -281,11 +307,28 @@
     var decoder = new TextDecoder('utf-8');
     var buffer = '';
     var fullText = '';
-    var bubble = null;
+    
+    var typingQueue = "";
+    var isTyping = false;
 
     removeTypingIndicator();
     var created = createBubble('bot');
-    bubble = created.bubble;
+
+    function typeWriter() {
+      if (typingQueue.length > 0) {
+        var chunk = typingQueue.substring(0, 2);
+        typingQueue = typingQueue.substring(2);
+        
+        fullText += chunk;
+        var parsed = extractButtons(fullText);
+        created.bubble.innerHTML = formatMarkdown(parsed.clean);
+        scrollToBottom();
+        
+        setTimeout(typeWriter, 15);
+      } else {
+        isTyping = false;
+      }
+    }
 
     try {
       while (true) {
@@ -301,10 +344,11 @@
           var line = lines[i].trim();
           var chunk = parseSseChunk(line);
           if (chunk) {
-            fullText += chunk;
-            var parsed = extractButtons(fullText);
-            bubble.innerHTML = formatMarkdown(parsed.clean);
-            scrollToBottom();
+            typingQueue += chunk;
+            if (!isTyping) {
+              isTyping = true;
+              typeWriter();
+            }
           }
         }
       }
@@ -312,11 +356,15 @@
       if (buffer.trim()) {
         var finalChunk = parseSseChunk(buffer.trim());
         if (finalChunk) {
-          fullText += finalChunk;
-          var parsedFinal = extractButtons(fullText);
-          bubble.innerHTML = formatMarkdown(parsedFinal.clean);
+           typingQueue += finalChunk;
+           if (!isTyping) { isTyping = true; typeWriter(); }
         }
       }
+      
+      while (typingQueue.length > 0) {
+        await new Promise(r => setTimeout(r, 30));
+      }
+      
     } catch (streamErr) {
       console.error('Stream read error:', streamErr);
     }
@@ -324,8 +372,7 @@
     var duration = nowMs() - streamData.startTime;
     var parsedEnd = extractButtons(fullText);
 
-    var metaText = formatTimestamp(Date.now());
-    created.meta.innerHTML = metaText;
+    created.meta.innerHTML = formatTimestamp(Date.now());
     var dur = document.createElement('span');
     dur.className = 'meta-duration';
     dur.textContent = '⏱ ' + formatDuration(duration);
@@ -434,13 +481,6 @@
     }, 700);
   }
 
-  function stopPlaceholderAnimation() {
-    if (placeholderTimer) {
-      clearInterval(placeholderTimer);
-      placeholderTimer = null;
-    }
-  }
-
   function showWelcome() {
     if (hasWelcomed) return;
     hasWelcomed = true;
@@ -525,20 +565,6 @@
   function init() {
     bindEvents();
     startPlaceholderAnimation();
-
-    var statusCheckUrl = (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '') + '/api/web/ai/status';
-    var token = (typeof getToken === 'function') ? getToken() : null;
-
-    if (token) {
-      fetch(statusCheckUrl, {
-        headers: { 'Authorization': 'Bearer ' + token }
-      }).then(function (r) { return r.json(); }).then(function (d) {
-        if (d && d.success && d.data && !d.data.enabled) {
-          var note = document.querySelector('.ai-footer-note');
-          if (note) note.textContent = 'AI sedang dimatikan oleh admin';
-        }
-      }).catch(function () {});
-    }
 
     if (window.lucide) window.lucide.createIcons();
   }
