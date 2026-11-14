@@ -1673,3 +1673,21 @@ body {
 @media (max-width: 480px) {
   .ai-emergency-close { display: flex; }
 }
+
+
+
+
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.ai-status-text {
+  display: inline-block;
+  animation: bounceText 1.2s infinite;
+}
+
+@keyframes bounceText {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
